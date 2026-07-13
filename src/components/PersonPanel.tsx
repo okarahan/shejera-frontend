@@ -4,8 +4,14 @@ import {
   CreatePersonForm,
   type PersonFormData,
 } from "./CreatePersonForm";
+import { EditPersonForm, type EditPersonFormData } from "./EditPersonForm";
 
-export type PanelAction = "add-child" | "add-partner" | "add-parent1" | null;
+export type PanelAction =
+  | "add-child"
+  | "add-partner"
+  | "add-parent1"
+  | "edit"
+  | null;
 
 interface PersonPanelProps {
   person: Individual;
@@ -13,6 +19,7 @@ interface PersonPanelProps {
   onAction: (action: PanelAction) => void;
   activeAction: PanelAction;
   onCreatePerson: (data: PersonFormData, action: PanelAction) => Promise<void>;
+  onUpdatePerson: (data: EditPersonFormData) => Promise<void>;
   onCancelAction: () => void;
 }
 
@@ -34,6 +41,7 @@ export function PersonPanel({
   onAction,
   activeAction,
   onCreatePerson,
+  onUpdatePerson,
   onCancelAction,
 }: PersonPanelProps) {
   const asSpouse = families.filter((f) =>
@@ -43,11 +51,22 @@ export function PersonPanel({
     f.children.some((c) => c.individualId === person.id),
   );
 
-  const formTitles: Record<Exclude<PanelAction, null>, string> = {
+  const formTitles: Record<Exclude<PanelAction, null | "edit">, string> = {
     "add-child": "Kind hinzufügen",
     "add-partner": "Partner/in hinzufügen",
     "add-parent1": "Elternteil hinzufügen",
   };
+
+  if (activeAction === "edit") {
+    return (
+      <EditPersonForm
+        key={person.id}
+        person={person}
+        onSubmit={onUpdatePerson}
+        onCancel={onCancelAction}
+      />
+    );
+  }
 
   if (activeAction) {
     return (
@@ -128,6 +147,13 @@ export function PersonPanel({
       )}
 
       <div className="person-panel__actions">
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() => onAction("edit")}
+        >
+          Bearbeiten
+        </button>
         <button
           type="button"
           className="btn btn--secondary"

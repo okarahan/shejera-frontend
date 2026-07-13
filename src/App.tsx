@@ -5,6 +5,7 @@ import {
   CreatePersonForm,
   type PersonFormData,
 } from "./components/CreatePersonForm";
+import type { EditPersonFormData } from "./components/EditPersonForm";
 import {
   partnerRoleFor,
   PersonPanel,
@@ -127,6 +128,13 @@ export default function App() {
     setSelectedId(created.id);
   }
 
+  async function handleUpdatePerson(data: EditPersonFormData) {
+    if (!selected) return;
+    await api.updateIndividual(selected.id, data);
+    await refresh();
+    setPanelAction(null);
+  }
+
   if (loading) {
     return (
       <div className="app app--centered">
@@ -201,6 +209,7 @@ export default function App() {
                 activeAction={panelAction}
                 onAction={setPanelAction}
                 onCreatePerson={handleCreateRelated}
+                onUpdatePerson={handleUpdatePerson}
                 onCancelAction={() => setPanelAction(null)}
               />
             ) : (

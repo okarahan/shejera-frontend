@@ -4,6 +4,7 @@ import type {
   CreateIndividualRequest,
   Family,
   Individual,
+  UpdateIndividualRequest,
 } from "./types";
 
 const BASE = "/api";
@@ -30,6 +31,12 @@ export const api = {
   createIndividual: (body: CreateIndividualRequest) =>
     request<Individual>("/individuals", {
       method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateIndividual: (id: string, body: UpdateIndividualRequest) =>
+    request<Individual>(`/individuals/${id}`, {
+      method: "PUT",
       body: JSON.stringify(body),
     }),
 

@@ -27,6 +27,14 @@ export interface CreateIndividualRequest {
   biography?: string;
 }
 
+export interface UpdateIndividualRequest {
+  givenName?: string;
+  surname?: string;
+  sex?: Sex;
+  isLiving?: boolean;
+  biography?: string;
+}
+
 export interface Spouse {
   individualId: string;
   xref: string;
