@@ -1,0 +1,63 @@
+version: "3"
+
+tasks:
+  ensure-node:
+    internal: true
+    cmds:
+      - |
+        set -e
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
+          # shellcheck disable=SC1091
+          . "$NVM_DIR/nvm.sh"
+          nvm install
+          nvm use
+        fi
+        MAJOR=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
+        if [ "$MAJOR" -lt 20 ]; then
+          echo ""
+          echo "Node $(node -v) is too old — Vite 6 needs Node >= 20."
+          if [ -s "$NVM_DIR/nvm.sh" ]; then
+            echo "This repo has .nvmrc — run: nvm install && nvm use"
+          else
+            echo "Install Node 20+ from https://nodejs.org/"
+          fi
+          exit 1
+        fi
+        echo "Using Node $(node -v)"
+
+  install:
+    desc: Install npm dependencies
+    deps: [ensure-node]
+    cmds:
+      - npm install
+
+  dev:
+    desc: Start Vite dev server (http://localhost:5173)
+    deps: [install]
+    cmds:
+      - npm run dev
+
+  build:
+    desc: Type-check and production build
+    deps: [install]
+    cmds:
+      - npm run build
+
+  preview:
+    desc: Preview production build locally
+    deps: [build]
+    cmds:
+      - npm run preview
+
+  check:
+    desc: TypeScript check only
+    deps: [install]
+    cmds:
+      - npx tsc -b
+
+  docker:
+    desc: Build and run frontend container (http://localhost:8081)
+    cmds:
+      - docker build -t shejera-frontend .
+      - docker run --rm -p 8081:80 shejera-frontend
