@@ -373,8 +373,47 @@ select {
 
 .person-panel__section ul {
   margin: 0;
-  padding-left: 1.25rem;
   font-size: 0.875rem;
+}
+
+.person-panel__simple-list {
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.person-panel__rel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person-panel__rel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.person-panel__rel-item:last-child {
+  border-bottom: none;
+}
+
+.person-panel__rel-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.person-panel__rel-role {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 .person-panel__family {
@@ -476,6 +515,35 @@ select {
 
 .btn--ghost {
   background: transparent;
+}
+
+.btn--small {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.btn--danger {
+  color: #fff;
+  border-color: #dc2626;
+  background: #dc2626;
+}
+
+.btn--danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.person-panel__delete-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: #b45309;
+}
+
+.btn--delete {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.55rem 0.85rem;
+  font-weight: 600;
 }
 
 .empty-state {

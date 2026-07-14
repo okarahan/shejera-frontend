@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { TreeEdge, TreeGraph } from "./buildGraph";
 import {
   CARD_HEIGHT,
@@ -98,6 +98,16 @@ function buildEdgePaths(
 }
 
 export function FamilyTree({ graph, selectedId, zoom, onSelect }: FamilyTreeProps) {
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [selectedId]);
+
   const layout: LayoutResult = layoutTree(graph.nodes, graph.edges);
   const { positions, width, height } = layout;
   const padding = 32;
@@ -138,6 +148,7 @@ export function FamilyTree({ graph, selectedId, zoom, onSelect }: FamilyTreeProp
               return (
                 <PersonCard
                   key={node.id}
+                  ref={selectedId === node.id ? selectedRef : undefined}
                   person={node.individual}
                   x={pos.x}
                   y={pos.y}

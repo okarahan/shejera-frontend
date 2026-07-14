@@ -120,6 +120,103 @@ export function buildTreeGraph(
   return { nodes, edges };
 }
 
+/** Build graph with all individuals and all family relationships. */
+export function buildFullTreeGraph(
+  individuals: Individual[],
+  families: Family[],
+): TreeGraph {
+  const edges: TreeEdge[] = [];
+  const edgeKeys = new Set<string>();
+
+  function addEdge(from: string, to: string, type: EdgeType, familyId?: string) {
+    const key =
+      type === "spouse"
+        ? `s:${[from, to].sort().join("-")}`
+        : `p:${from}-${to}`;
+    if (edgeKeys.has(key)) return;
+    edgeKeys.add(key);
+    edges.push({ from, to, type, familyId });
+  }
+
+  for (const fam of families) {
+    for (let i = 0; i < fam.spouses.length; i++) {
+      for (let j = i + 1; j < fam.spouses.length; j++) {
+        addEdge(
+          fam.spouses[i].individualId,
+          fam.spouses[j].individualId,
+          "spouse",
+          fam.id,
+        );
+      }
+    }
+    for (const spouse of fam.spouses) {
+      for (const child of fam.children) {
+        addEdge(spouse.individualId, child.individualId, "parent", fam.id);
+      }
+    }
+  }
+
+  const isChild = new Set(
+    families.flatMap((f) => f.children.map((c) => c.individualId)),
+  );
+
+  const generations = new Map<string, number>();
+  for (const ind of individuals) {
+    generations.set(ind.id, isChild.has(ind.id) ? -1 : 0);
+  }
+
+  function syncGenerations() {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const edge of edges) {
+        if (edge.type === "parent") {
+          const parentGen = generations.get(edge.from) ?? 0;
+          const childGen = parentGen + 1;
+          const current = generations.get(edge.to) ?? -1;
+          if (current < childGen) {
+            generations.set(edge.to, childGen);
+            changed = true;
+          }
+        }
+      }
+      for (const edge of edges) {
+        if (edge.type === "spouse") {
+          const g1 = generations.get(edge.from) ?? 0;
+          const g2 = generations.get(edge.to) ?? 0;
+          const aligned = Math.max(g1, g2);
+          if (generations.get(edge.from) !== aligned) {
+            generations.set(edge.from, aligned);
+            changed = true;
+          }
+          if (generations.get(edge.to) !== aligned) {
+            generations.set(edge.to, aligned);
+            changed = true;
+          }
+        }
+      }
+    }
+  }
+
+  syncGenerations();
+
+  // Normalize so minimum generation is 0
+  const minGen = Math.min(...generations.values());
+  if (minGen !== 0) {
+    for (const [id, gen] of generations) {
+      generations.set(id, gen - minGen);
+    }
+  }
+
+  const nodes: TreeNode[] = individuals.map((individual) => ({
+    id: individual.id,
+    generation: generations.get(individual.id) ?? 0,
+    individual,
+  }));
+
+  return { nodes, edges };
+}
+
 /** Find families where person is a spouse (for adding children). */
 export function familiesAsSpouse(
   personId: string,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api/client";
-import type { Family, Individual } from "./api/types";
+import type { Family, Individual, IndividualRelationships } from "./api/types";
 import {
   CreatePersonForm,
   type PersonFormData,
@@ -12,7 +12,11 @@ import {
   spouseRoleForNewPartner,
   type PanelAction,
 } from "./components/PersonPanel";
-import { buildTreeGraph } from "./tree/buildGraph";
+import { buildFullTreeGraph, personLabel } from "./tree/buildGraph";
+import {
+  canDeleteIndividual,
+  deleteBlockedMessage,
+} from "./api/relationships";
 import { FamilyTree } from "./tree/FamilyTree";
 import { TreeZoomControls } from "./tree/TreeZoomControls";
 import { useZoom } from "./tree/useZoom";
@@ -31,47 +35,65 @@ async function loadData(): Promise<{
 export default function App() {
   const [individuals, setIndividuals] = useState<Individual[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
-  const [rootId, setRootId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [relationships, setRelationships] =
+    useState<IndividualRelationships | null>(null);
   const [panelAction, setPanelAction] = useState<PanelAction>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { zoom, zoomIn, zoomOut, resetZoom } = useZoom();
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (keepSelectedId?: string | null) => {
     const data = await loadData();
     setIndividuals(data.individuals);
     setFamilies(data.families);
+
+    const id = keepSelectedId ?? selectedId;
+    if (id && data.individuals.some((i) => i.id === id)) {
+      const rel = await api.getIndividualRelationships(id);
+      setRelationships(rel);
+    } else {
+      setRelationships(null);
+    }
+
     return data;
-  }, []);
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setRelationships(null);
+      return;
+    }
+    api
+      .getIndividualRelationships(selectedId)
+      .then(setRelationships)
+      .catch(() => setRelationships(null));
+  }, [selectedId]);
 
   useEffect(() => {
     refresh()
       .then((data) => {
         if (data.individuals.length > 0) {
-          setRootId((prev) => prev ?? data.individuals[0].id);
           setSelectedId((prev) => prev ?? data.individuals[0].id);
         }
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Laden fehlgeschlagen"),
+        setError(err instanceof Error ? err.message : "Yükleme başarısız"),
       )
       .finally(() => setLoading(false));
   }, [refresh]);
 
-  const effectiveRoot = rootId ?? selectedId;
-  const graph = useMemo(() => {
-    if (!effectiveRoot) return { nodes: [], edges: [] };
-    return buildTreeGraph(effectiveRoot, individuals, families);
-  }, [effectiveRoot, individuals, families]);
+  const graph = useMemo(
+    () => buildFullTreeGraph(individuals, families),
+    [individuals, families],
+  );
 
   const selected = individuals.find((i) => i.id === selectedId) ?? null;
 
   async function handleCreateFirstPerson(data: PersonFormData) {
     const created = await api.createIndividual(data);
     await refresh();
-    setRootId(created.id);
     setSelectedId(created.id);
   }
 
@@ -124,7 +146,6 @@ export default function App() {
         ],
       });
       await api.addFamilyChild(fam.id, { individualId: selected.id });
-      setRootId((prev) => prev ?? selected.id);
     }
 
     await refresh();
@@ -139,10 +160,43 @@ export default function App() {
     setPanelAction(null);
   }
 
+  async function handleDeletePerson() {
+    if (!selected) return;
+
+    const eligibility = relationships;
+    if (!eligibility || !canDeleteIndividual(eligibility)) {
+      window.alert(
+        eligibility
+          ? deleteBlockedMessage(eligibility)
+          : "İlişkiler yüklenemedi",
+      );
+      return;
+    }
+
+    const name = personLabel(selected);
+    const ok = window.confirm(
+      `"${name}" kişisini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+    );
+    if (!ok) return;
+
+    try {
+      await api.deleteIndividual(selected.id);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Silme başarısız");
+      return;
+    }
+
+    const data = await refresh(selected.id);
+    setPanelAction(null);
+
+    const fallback = data.individuals[0]?.id ?? null;
+    setSelectedId(fallback);
+  }
+
   if (loading) {
     return (
       <div className="app app--centered">
-        <p>Lade …</p>
+        <p>Yükleniyor…</p>
       </div>
     );
   }
@@ -152,8 +206,8 @@ export default function App() {
       <div className="app app--centered">
         <p className="error-banner">{error}</p>
         <p className="muted">
-          Backend unter <code>/api</code> erreichbar?{" "}
-          <code>task run</code> im Backend-Repo.
+          Backend <code>/api</code> altında erişilebilir mi? Backend
+          deposunda <code>task run</code> çalıştırın.
         </p>
       </div>
     );
@@ -163,31 +217,15 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1 className="header__title">Shejera</h1>
-        {individuals.length > 0 && (
-          <label className="header__root">
-            Baumzentrum
-            <select
-              value={effectiveRoot ?? ""}
-              onChange={(e) => setRootId(e.target.value)}
-            >
-              {individuals.map((ind) => (
-                <option key={ind.id} value={ind.id}>
-                  {[ind.givenName, ind.surname].filter(Boolean).join(" ") ||
-                    ind.xref}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </header>
 
       {individuals.length === 0 ? (
         <div className="empty-state">
-          <h2>Stammbaum starten</h2>
-          <p>Lege die erste Person an.</p>
+          <h2>Soy ağacını başlat</h2>
+          <p>İlk kişiyi ekle.</p>
           <CreatePersonForm
-            title="Erste Person"
-            submitLabel="Anlegen"
+            title="İlk kişi"
+            submitLabel="Ekle"
             onSubmit={handleCreateFirstPerson}
           />
         </div>
@@ -213,7 +251,7 @@ export default function App() {
                 />
               </div>
             ) : (
-              <p className="muted">Keine Baumdaten für diese Person.</p>
+              <p className="muted">Henüz kişi yok.</p>
             )}
           </div>
 
@@ -227,7 +265,7 @@ export default function App() {
             <span className="workspace__panel-tab-icon" aria-hidden>
               {panelOpen ? "›" : "‹"}
             </span>
-            <span className="workspace__panel-tab-label">Details</span>
+            <span className="workspace__panel-tab-label">Detaylar</span>
           </button>
 
           <aside
@@ -238,15 +276,16 @@ export default function App() {
             {selected ? (
               <PersonPanel
                 person={selected}
-                families={families}
+                relationships={relationships}
                 activeAction={panelAction}
                 onAction={setPanelAction}
                 onCreatePerson={handleCreateRelated}
                 onUpdatePerson={handleUpdatePerson}
+                onDeletePerson={handleDeletePerson}
                 onCancelAction={() => setPanelAction(null)}
               />
             ) : (
-              <p className="muted">Person im Baum auswählen.</p>
+              <p className="muted">Ağaçtan bir kişi seçin.</p>
             )}
           </aside>
         </div>

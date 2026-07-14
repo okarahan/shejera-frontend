@@ -39,7 +39,7 @@ export function EditPersonForm({
         isLiving,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Hata");
     } finally {
       setLoading(false);
     }
@@ -47,10 +47,10 @@ export function EditPersonForm({
 
   return (
     <form className="person-form" onSubmit={handleSubmit}>
-      <h3 className="person-form__title">Person bearbeiten</h3>
+      <h3 className="person-form__title">Kişiyi düzenle</h3>
       {error && <p className="person-form__error">{error}</p>}
       <label className="person-form__field">
-        Vorname
+        Ad
         <input
           value={givenName}
           onChange={(e) => setGivenName(e.target.value)}
@@ -59,7 +59,7 @@ export function EditPersonForm({
         />
       </label>
       <label className="person-form__field">
-        Nachname
+        Soyad
         <input
           value={surname}
           onChange={(e) => setSurname(e.target.value)}
@@ -67,16 +67,16 @@ export function EditPersonForm({
         />
       </label>
       <label className="person-form__field">
-        Geschlecht
+        Cinsiyet
         <select
           value={sex}
           onChange={(e) => setSex(e.target.value as Sex | "")}
         >
           <option value="">—</option>
-          <option value="M">Männlich</option>
-          <option value="F">Weiblich</option>
-          <option value="X">Divers</option>
-          <option value="U">Unbekannt</option>
+          <option value="M">Erkek</option>
+          <option value="F">Kadın</option>
+          <option value="X">Diğer</option>
+          <option value="U">Belirsiz</option>
         </select>
       </label>
       <label className="person-form__checkbox">
@@ -85,14 +85,14 @@ export function EditPersonForm({
           checked={isLiving}
           onChange={(e) => setIsLiving(e.target.checked)}
         />
-        Lebt
+        Yaşıyor
       </label>
       <div className="person-form__actions">
         <button type="button" className="btn btn--ghost" onClick={onCancel}>
-          Abbrechen
+          İptal
         </button>
         <button type="submit" className="btn btn--primary" disabled={loading}>
-          {loading ? "…" : "Speichern"}
+          {loading ? "…" : "Kaydet"}
         </button>
       </div>
     </form>

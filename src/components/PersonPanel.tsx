@@ -1,4 +1,10 @@
-import type { Family, Individual, SpouseRole } from "../api/types";
+import type { Individual, IndividualRelationships, SpouseRole } from "../api/types";
+import {
+  canDeleteIndividual,
+  deleteBlockedMessage,
+  relatedDisplayName,
+  relationshipsByFamily,
+} from "../api/relationships";
 import { personLabel } from "../tree/buildGraph";
 import {
   CreatePersonForm,
@@ -15,11 +21,12 @@ export type PanelAction =
 
 interface PersonPanelProps {
   person: Individual;
-  families: Family[];
+  relationships: IndividualRelationships | null;
   onAction: (action: PanelAction) => void;
   activeAction: PanelAction;
   onCreatePerson: (data: PersonFormData, action: PanelAction) => Promise<void>;
   onUpdatePerson: (data: EditPersonFormData) => Promise<void>;
+  onDeletePerson: () => Promise<void>;
   onCancelAction: () => void;
 }
 
@@ -35,26 +42,33 @@ function partnerRoleFor(person: Individual): SpouseRole {
   return "HUSB";
 }
 
+function sexLabel(sex: Individual["sex"]): string {
+  if (sex === "M") return "Erkek";
+  if (sex === "F") return "Kadın";
+  if (sex === "X") return "Diğer";
+  if (sex === "U") return "Belirsiz";
+  return sex ?? "";
+}
+
 export function PersonPanel({
   person,
-  families,
+  relationships,
   onAction,
   activeAction,
   onCreatePerson,
   onUpdatePerson,
+  onDeletePerson,
   onCancelAction,
 }: PersonPanelProps) {
-  const asSpouse = families.filter((f) =>
-    f.spouses.some((s) => s.individualId === person.id),
-  );
-  const asChild = families.find((f) =>
-    f.children.some((c) => c.individualId === person.id),
-  );
+  const familyGroups = relationships
+    ? [...relationshipsByFamily(relationships).entries()]
+    : [];
+  const hasParents = (relationships?.parents.length ?? 0) > 0;
 
   const formTitles: Record<Exclude<PanelAction, null | "edit">, string> = {
-    "add-child": "Kind hinzufügen",
-    "add-partner": "Partner/in hinzufügen",
-    "add-parent1": "Elternteil hinzufügen",
+    "add-child": "Çocuk ekle",
+    "add-partner": "Eş ekle",
+    "add-parent1": "Ebeveyn ekle",
   };
 
   if (activeAction === "edit") {
@@ -72,7 +86,7 @@ export function PersonPanel({
     return (
       <CreatePersonForm
         title={formTitles[activeAction]}
-        submitLabel="Anlegen"
+        submitLabel="Ekle"
         defaultSurname={
           activeAction === "add-child" ? (person.surname ?? "") : ""
         }
@@ -90,54 +104,41 @@ export function PersonPanel({
         <dd>{person.xref}</dd>
         {person.sex && (
           <>
-            <dt>Geschlecht</dt>
-            <dd>{person.sex}</dd>
+            <dt>Cinsiyet</dt>
+            <dd>{sexLabel(person.sex)}</dd>
           </>
         )}
-        <dt>Status</dt>
-        <dd>{person.isLiving ? "Lebt" : "Verstorben"}</dd>
+        <dt>Durum</dt>
+        <dd>{person.isLiving ? "Yaşıyor" : "Vefat etmiş"}</dd>
       </dl>
 
       {person.biography && (
         <p className="person-panel__bio">{person.biography}</p>
       )}
 
-      {asChild && (
+      {relationships && relationships.parents.length > 0 && (
         <section className="person-panel__section">
-          <h3>Eltern</h3>
-          <ul>
-            {asChild.spouses.map((s) => (
-              <li key={s.individualId}>
-                {[s.givenName, s.surname].filter(Boolean).join(" ") || s.xref}
-              </li>
+          <h3>Ebeveynler</h3>
+          <ul className="person-panel__simple-list">
+            {relationships.parents.map((p) => (
+              <li key={p.individualId}>{relatedDisplayName(p)}</li>
             ))}
           </ul>
         </section>
       )}
 
-      {asSpouse.length > 0 && (
+      {familyGroups.length > 0 && (
         <section className="person-panel__section">
-          <h3>Partnerschaften</h3>
-          {asSpouse.map((fam) => (
-            <div key={fam.id} className="person-panel__family">
+          <h3>Evlilikler</h3>
+          {familyGroups.map(([familyId, group]) => (
+            <div key={familyId} className="person-panel__family">
               <p className="person-panel__family-partners">
-                {fam.spouses
-                  .map((s) =>
-                    s.individualId === person.id
-                      ? null
-                      : [s.givenName, s.surname].filter(Boolean).join(" ") ||
-                        s.xref,
-                  )
-                  .filter(Boolean)
-                  .join(" & ") || "—"}
+                {group.spouses.map(relatedDisplayName).join(" & ") || "—"}
               </p>
-              {fam.children.length > 0 && (
-                <ul>
-                  {fam.children.map((c) => (
-                    <li key={c.individualId}>
-                      {[c.givenName, c.surname].filter(Boolean).join(" ") ||
-                        c.xref}
-                    </li>
+              {group.children.length > 0 && (
+                <ul className="person-panel__simple-list">
+                  {group.children.map((c) => (
+                    <li key={c.individualId}>{relatedDisplayName(c)}</li>
                   ))}
                 </ul>
               )}
@@ -152,36 +153,50 @@ export function PersonPanel({
           className="btn btn--secondary"
           onClick={() => onAction("edit")}
         >
-          Bearbeiten
+          Düzenle
         </button>
         <button
           type="button"
           className="btn btn--secondary"
           onClick={() => onAction("add-child")}
         >
-          + Kind
+          + Çocuk
         </button>
         <button
           type="button"
           className="btn btn--secondary"
           onClick={() => onAction("add-partner")}
         >
-          + Partner/in
+          + Eş
         </button>
-        {!asChild && (
+        {!hasParents && (
           <button
             type="button"
             className="btn btn--secondary"
             onClick={() => onAction("add-parent1")}
           >
-            + Elternteil
+            + Ebeveyn
           </button>
         )}
       </div>
 
+      <button
+        type="button"
+        className="btn btn--danger btn--delete"
+        onClick={onDeletePerson}
+      >
+        Sil
+      </button>
+
+      {relationships && !canDeleteIndividual(relationships) && (
+        <p className="person-panel__delete-hint">
+          {deleteBlockedMessage(relationships)}
+        </p>
+      )}
+
       <p className="person-panel__hint">
-        Rolle bei neuer Partnerschaft:{" "}
-        {partnerRoleFor(person)} / Partner: {spouseRoleForNewPartner(person)}
+        Yeni evlilikte rol: {partnerRoleFor(person)} / Eş:{" "}
+        {spouseRoleForNewPartner(person)}
       </p>
     </div>
   );

@@ -90,3 +90,18 @@ export interface AddChildRequest {
 export interface ApiError {
   error: string;
 }
+
+export interface RelatedIndividual {
+  individualId: string;
+  xref: string;
+  givenName?: string | null;
+  surname?: string | null;
+  familyId: string;
+  role?: string | null;
+}
+
+export interface IndividualRelationships {
+  spouses: RelatedIndividual[];
+  children: RelatedIndividual[];
+  parents: RelatedIndividual[];
+}

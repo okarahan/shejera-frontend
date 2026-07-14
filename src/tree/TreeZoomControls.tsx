@@ -14,11 +14,11 @@ export function TreeZoomControls({
   onReset,
 }: TreeZoomControlsProps) {
   return (
-    <div className="tree-zoom" role="group" aria-label="Zoom">
+    <div className="tree-zoom" role="group" aria-label="Yakınlaştırma">
       <button
         type="button"
         className="tree-zoom__btn"
-        aria-label="Verkleinern"
+        aria-label="Uzaklaştır"
         disabled={zoom <= MIN_ZOOM}
         onClick={onZoomOut}
       >
@@ -27,7 +27,7 @@ export function TreeZoomControls({
       <button
         type="button"
         className="tree-zoom__btn tree-zoom__btn--label"
-        aria-label="Zoom zurücksetzen"
+        aria-label="Yakınlaştırmayı sıfırla"
         onClick={onReset}
       >
         {Math.round(zoom * 100)}%
@@ -35,7 +35,7 @@ export function TreeZoomControls({
       <button
         type="button"
         className="tree-zoom__btn"
-        aria-label="Vergrößern"
+        aria-label="Yakınlaştır"
         disabled={zoom >= MAX_ZOOM}
         onClick={onZoomIn}
       >

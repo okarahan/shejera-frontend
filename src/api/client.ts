@@ -4,6 +4,7 @@ import type {
   CreateIndividualRequest,
   Family,
   Individual,
+  IndividualRelationships,
   UpdateIndividualRequest,
 } from "./types";
 
@@ -39,6 +40,12 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+
+  deleteIndividual: (id: string) =>
+    request<void>(`/individuals/${id}`, { method: "DELETE" }),
+
+  getIndividualRelationships: (id: string) =>
+    request<IndividualRelationships>(`/individuals/${id}/relationships`),
 
   listFamilies: () => request<Family[]>("/families"),
 
