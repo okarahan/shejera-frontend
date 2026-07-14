@@ -13,6 +13,7 @@ import { PersonCard } from "./PersonCard";
 interface FamilyTreeProps {
   graph: TreeGraph;
   selectedId: string | null;
+  zoom: number;
   onSelect: (id: string) => void;
 }
 
@@ -96,7 +97,7 @@ function buildEdgePaths(
   return paths;
 }
 
-export function FamilyTree({ graph, selectedId, onSelect }: FamilyTreeProps) {
+export function FamilyTree({ graph, selectedId, zoom, onSelect }: FamilyTreeProps) {
   const layout: LayoutResult = layoutTree(graph.nodes, graph.edges);
   const { positions, width, height } = layout;
   const padding = 32;
@@ -109,31 +110,44 @@ export function FamilyTree({ graph, selectedId, onSelect }: FamilyTreeProps) {
   }
 
   return (
-    <div className="family-tree" style={{ width: svgWidth, height: svgHeight }}>
-      <svg
-        className="family-tree__svg"
-        width={svgWidth}
-        height={svgHeight}
-        aria-hidden
-      >
-        {buildEdgePaths(graph.edges, offsetPositions)}
-      </svg>
-      <div className="family-tree__cards">
-        {graph.nodes.map((node) => {
-          const pos = offsetPositions.get(node.id);
-          if (!pos) return null;
-          return (
-            <PersonCard
-              key={node.id}
-              person={node.individual}
-              x={pos.x}
-              y={pos.y}
-              selected={selectedId === node.id}
-              onClick={() => onSelect(node.id)}
-            />
-          );
-        })}
+    <div
+      className="tree-viewport__stage"
+      style={{ width: svgWidth * zoom, height: svgHeight * zoom }}
+    >
+        <div
+          className="family-tree"
+          style={{
+            width: svgWidth,
+            height: svgHeight,
+            transform: `scale(${zoom})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <svg
+            className="family-tree__svg"
+            width={svgWidth}
+            height={svgHeight}
+            aria-hidden
+          >
+            {buildEdgePaths(graph.edges, offsetPositions)}
+          </svg>
+          <div className="family-tree__cards">
+            {graph.nodes.map((node) => {
+              const pos = offsetPositions.get(node.id);
+              if (!pos) return null;
+              return (
+                <PersonCard
+                  key={node.id}
+                  person={node.individual}
+                  x={pos.x}
+                  y={pos.y}
+                  selected={selectedId === node.id}
+                  onClick={() => onSelect(node.id)}
+                />
+              );
+            })}
+          </div>
+        </div>
       </div>
-    </div>
   );
 }

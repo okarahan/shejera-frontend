@@ -14,6 +14,8 @@ import {
 } from "./components/PersonPanel";
 import { buildTreeGraph } from "./tree/buildGraph";
 import { FamilyTree } from "./tree/FamilyTree";
+import { TreeZoomControls } from "./tree/TreeZoomControls";
+import { useZoom } from "./tree/useZoom";
 
 async function loadData(): Promise<{
   individuals: Individual[];
@@ -32,8 +34,10 @@ export default function App() {
   const [rootId, setRootId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelAction, setPanelAction] = useState<PanelAction>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { zoom, zoomIn, zoomOut, resetZoom } = useZoom();
 
   const refresh = useCallback(async () => {
     const data = await loadData();
@@ -188,20 +192,49 @@ export default function App() {
           />
         </div>
       ) : (
-        <div className="workspace">
+        <div
+          className="workspace"
+          data-panel-open={panelOpen}
+        >
           <div className="workspace__tree">
+            <TreeZoomControls
+              zoom={zoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onReset={resetZoom}
+            />
             {graph.nodes.length > 0 ? (
-              <FamilyTree
-                graph={graph}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-              />
+              <div className="tree-viewport">
+                <FamilyTree
+                  graph={graph}
+                  selectedId={selectedId}
+                  zoom={zoom}
+                  onSelect={setSelectedId}
+                />
+              </div>
             ) : (
               <p className="muted">Keine Baumdaten für diese Person.</p>
             )}
           </div>
 
-          <aside className="workspace__panel">
+          <button
+            type="button"
+            className="workspace__panel-tab"
+            aria-expanded={panelOpen}
+            aria-controls="person-panel"
+            onClick={() => setPanelOpen((open) => !open)}
+          >
+            <span className="workspace__panel-tab-icon" aria-hidden>
+              {panelOpen ? "›" : "‹"}
+            </span>
+            <span className="workspace__panel-tab-label">Details</span>
+          </button>
+
+          <aside
+            id="person-panel"
+            className="workspace__panel"
+            aria-hidden={!panelOpen}
+          >
             {selected ? (
               <PersonPanel
                 person={selected}
