@@ -18,6 +18,7 @@ export interface Individual {
   surname?: string;
   biography?: string | null;
   birthDate?: string | null;
+  deathDate?: string | null;
 }
 
 export interface CreateIndividualRequest {
@@ -27,6 +28,7 @@ export interface CreateIndividualRequest {
   isLiving?: boolean;
   biography?: string;
   birthDate?: string;
+  deathDate?: string;
 }
 
 export interface UpdateIndividualRequest {
@@ -36,6 +38,7 @@ export interface UpdateIndividualRequest {
   isLiving?: boolean;
   biography?: string;
   birthDate?: string;
+  deathDate?: string;
 }
 
 export interface Spouse {

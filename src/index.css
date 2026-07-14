@@ -258,19 +258,16 @@ select {
 .person-card {
   position: absolute;
   margin: 0;
-  padding: 0.45rem 0.4rem 0.5rem;
+  padding: 0.45rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
   box-shadow: var(--shadow);
   cursor: pointer;
-  text-align: center;
   transition: border-color 0.15s, box-shadow 0.15s;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
-  gap: 0.3rem;
 }
 
 .person-card:hover {
@@ -284,6 +281,14 @@ select {
 
 .person-card--deceased {
   opacity: 0.85;
+}
+
+.person-card__content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .person-card__photo {
@@ -311,8 +316,9 @@ select {
 }
 
 .person-card__body {
-  width: 100%;
+  flex: 1;
   min-width: 0;
+  text-align: left;
 }
 
 .person-card__name {
@@ -338,15 +344,69 @@ select {
   -webkit-line-clamp: 2;
 }
 
-.person-card__birth {
+.person-card__dates.life-dates {
+  margin-top: 0.15rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.life-dates--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+
+.life-dates--stacked .life-dates__item {
+  max-width: 100%;
+}
+
+.life-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
   font-size: 0.6875rem;
   color: var(--muted);
   line-height: 1.2;
-  margin-top: 0.2rem;
-  width: 100%;
+}
+
+.life-dates__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.life-dates__value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.life-dates__sep {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.life-dates__symbol {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.life-dates__symbol--birth,
+.life-dates__item--birth .life-dates__symbol {
+  color: #2563eb;
+}
+
+.life-dates__symbol--death,
+.life-dates__item--death .life-dates__symbol {
+  color: #64748b;
+}
+
+.person-form__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
 }
 
 .person-card__sr-only {

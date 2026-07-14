@@ -1,6 +1,8 @@
 import { forwardRef } from "react";
 import type { Individual } from "../api/types";
+import { LifeDates } from "../components/LifeDates";
 import { personLabel } from "./buildGraph";
+import { lifeSpanYearLabel } from "../lib/birthDate";
 import { CARD_HEIGHT, CARD_WIDTH } from "./layoutTree";
 
 interface PersonCardProps {
@@ -25,6 +27,8 @@ function avatarColor(sex?: Individual["sex"]): string {
 
 export const PersonCard = forwardRef<HTMLButtonElement, PersonCardProps>(
   function PersonCard({ person, x, y, selected, onClick }, ref) {
+    const dates = lifeSpanYearLabel(person.birthDate, person.deathDate);
+
     return (
       <button
         ref={ref}
@@ -33,24 +37,32 @@ export const PersonCard = forwardRef<HTMLButtonElement, PersonCardProps>(
         style={{ left: x, top: y, width: CARD_WIDTH, height: CARD_HEIGHT }}
         onClick={onClick}
       >
-        <div className="person-card__photo" aria-hidden>
-          <span
-            className="person-card__photo-placeholder"
-            style={{ background: avatarColor(person.sex) }}
-          >
-            {initials(person)}
-          </span>
-        </div>
-        <div className="person-card__body">
-          <div className="person-card__name">{person.givenName ?? "—"}</div>
-          <div className="person-card__surname">{person.surname ?? ""}</div>
-          {person.birthDate && (
-            <div className="person-card__birth">{person.birthDate}</div>
-          )}
+        <div className="person-card__content">
+          <div className="person-card__photo" aria-hidden>
+            <span
+              className="person-card__photo-placeholder"
+              style={{ background: avatarColor(person.sex) }}
+            >
+              {initials(person)}
+            </span>
+          </div>
+          <div className="person-card__body">
+            <div className="person-card__name">{person.givenName ?? "—"}</div>
+            {person.surname && (
+              <div className="person-card__surname">{person.surname}</div>
+            )}
+            <LifeDates
+              birthDate={person.birthDate}
+              deathDate={person.deathDate}
+              yearOnly
+              stacked
+              className="person-card__dates life-dates"
+            />
+          </div>
         </div>
         <span className="person-card__sr-only">
           {personLabel(person)}
-          {person.birthDate ? `, ${person.birthDate}` : ""}
+          {dates ? `, ${dates}` : ""}
         </span>
       </button>
     );

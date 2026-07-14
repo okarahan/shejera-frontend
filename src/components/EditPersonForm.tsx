@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Individual, Sex } from "../api/types";
-import { BIRTH_DATE_HINT, birthDateError } from "../lib/birthDate";
+import { BIRTH_DATE_HINT, BIRTH_SYMBOL, DEATH_SYMBOL, birthDateError } from "../lib/birthDate";
 
 export interface EditPersonFormData {
   givenName: string;
@@ -8,6 +8,7 @@ export interface EditPersonFormData {
   sex?: Sex;
   isLiving: boolean;
   birthDate: string;
+  deathDate: string;
 }
 
 interface EditPersonFormProps {
@@ -24,16 +25,33 @@ export function EditPersonForm({
   const [givenName, setGivenName] = useState(person.givenName ?? "");
   const [surname, setSurname] = useState(person.surname ?? "");
   const [birthDate, setBirthDate] = useState(person.birthDate ?? "");
+  const [deathDate, setDeathDate] = useState(person.deathDate ?? "");
   const [sex, setSex] = useState<Sex | "">(person.sex ?? "");
   const [isLiving, setIsLiving] = useState(person.isLiving);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const birthDateValidationError = birthDateError(birthDate);
+  const deathDateValidationError = birthDateError(deathDate);
+  const hasDeathDate = deathDate.trim().length > 0;
+
+  function handleDeathDateChange(value: string) {
+    setDeathDate(value);
+    if (value.trim()) {
+      setIsLiving(false);
+    }
+  }
+
+  function handleIsLivingChange(checked: boolean) {
+    setIsLiving(checked);
+    if (checked) {
+      setDeathDate("");
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!givenName.trim() && !surname.trim()) return;
-    if (birthDateValidationError) return;
+    if (birthDateValidationError || deathDateValidationError) return;
     setLoading(true);
     setError(null);
     try {
@@ -41,8 +59,9 @@ export function EditPersonForm({
         givenName: givenName.trim(),
         surname: surname.trim(),
         birthDate: birthDate.trim(),
+        deathDate: deathDate.trim(),
         sex: sex || undefined,
-        isLiving,
+        isLiving: hasDeathDate ? false : isLiving,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Hata");
@@ -72,7 +91,12 @@ export function EditPersonForm({
         />
       </label>
       <label className="person-form__field">
-        Doğum tarihi
+        <span className="person-form__label">
+          <span className="life-dates__symbol life-dates__symbol--birth" aria-hidden>
+            {BIRTH_SYMBOL}
+          </span>{" "}
+          Doğum tarihi
+        </span>
         <input
           value={birthDate}
           onChange={(e) => setBirthDate(e.target.value)}
@@ -81,6 +105,23 @@ export function EditPersonForm({
         />
         {birthDateValidationError && (
           <span className="person-form__field-error">{birthDateValidationError}</span>
+        )}
+      </label>
+      <label className="person-form__field">
+        <span className="person-form__label">
+          <span className="life-dates__symbol life-dates__symbol--death" aria-hidden>
+            {DEATH_SYMBOL}
+          </span>{" "}
+          Ölüm tarihi
+        </span>
+        <input
+          value={deathDate}
+          onChange={(e) => handleDeathDateChange(e.target.value)}
+          placeholder={BIRTH_DATE_HINT}
+          inputMode="numeric"
+        />
+        {deathDateValidationError && (
+          <span className="person-form__field-error">{deathDateValidationError}</span>
         )}
       </label>
       <label className="person-form__field">
@@ -100,7 +141,8 @@ export function EditPersonForm({
         <input
           type="checkbox"
           checked={isLiving}
-          onChange={(e) => setIsLiving(e.target.checked)}
+          disabled={hasDeathDate}
+          onChange={(e) => handleIsLivingChange(e.target.checked)}
         />
         Yaşıyor
       </label>
@@ -114,7 +156,8 @@ export function EditPersonForm({
           disabled={
             loading ||
             (!givenName.trim() && !surname.trim()) ||
-            !!birthDateValidationError
+            !!birthDateValidationError ||
+            !!deathDateValidationError
           }
         >
           {loading ? "…" : "Kaydet"}

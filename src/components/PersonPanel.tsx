@@ -7,6 +7,10 @@ import {
 } from "../api/relationships";
 import { personLabel } from "../tree/buildGraph";
 import {
+  BIRTH_SYMBOL,
+  DEATH_SYMBOL,
+} from "../lib/birthDate";
+import {
   CreatePersonForm,
   type PersonFormData,
 } from "./CreatePersonForm";
@@ -112,8 +116,24 @@ export function PersonPanel({
         <dd>{person.isLiving ? "Yaşıyor" : "Vefat etmiş"}</dd>
         {person.birthDate && (
           <>
-            <dt>Doğum tarihi</dt>
+            <dt>
+              <span className="life-dates__symbol life-dates__symbol--birth" aria-hidden>
+                {BIRTH_SYMBOL}
+              </span>{" "}
+              Doğum tarihi
+            </dt>
             <dd>{person.birthDate}</dd>
+          </>
+        )}
+        {person.deathDate && (
+          <>
+            <dt>
+              <span className="life-dates__symbol life-dates__symbol--death" aria-hidden>
+                {DEATH_SYMBOL}
+              </span>{" "}
+              Ölüm tarihi
+            </dt>
+            <dd>{person.deathDate}</dd>
           </>
         )}
       </dl>

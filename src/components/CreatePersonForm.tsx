@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from "react";
 import type { Sex } from "../api/types";
-import { BIRTH_DATE_HINT, birthDateError } from "../lib/birthDate";
+import { BIRTH_DATE_HINT, BIRTH_SYMBOL, DEATH_SYMBOL, birthDateError } from "../lib/birthDate";
 
 export interface PersonFormData {
   givenName: string;
   surname: string;
   sex?: Sex;
   birthDate?: string;
+  deathDate?: string;
 }
 
 interface CreatePersonFormProps {
@@ -27,15 +28,17 @@ export function CreatePersonForm({
   const [givenName, setGivenName] = useState("");
   const [surname, setSurname] = useState(defaultSurname);
   const [birthDate, setBirthDate] = useState("");
+  const [deathDate, setDeathDate] = useState("");
   const [sex, setSex] = useState<Sex | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const birthDateValidationError = birthDateError(birthDate);
+  const deathDateValidationError = birthDateError(deathDate);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!givenName.trim() && !surname.trim()) return;
-    if (birthDateValidationError) return;
+    if (birthDateValidationError || deathDateValidationError) return;
     setLoading(true);
     setError(null);
     try {
@@ -44,6 +47,7 @@ export function CreatePersonForm({
         surname: surname.trim(),
         sex: sex || undefined,
         birthDate: birthDate.trim() || undefined,
+        deathDate: deathDate.trim() || undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Hata");
@@ -73,7 +77,12 @@ export function CreatePersonForm({
         />
       </label>
       <label className="person-form__field">
-        Doğum tarihi
+        <span className="person-form__label">
+          <span className="life-dates__symbol life-dates__symbol--birth" aria-hidden>
+            {BIRTH_SYMBOL}
+          </span>{" "}
+          Doğum tarihi
+        </span>
         <input
           value={birthDate}
           onChange={(e) => setBirthDate(e.target.value)}
@@ -82,6 +91,23 @@ export function CreatePersonForm({
         />
         {birthDateValidationError && (
           <span className="person-form__field-error">{birthDateValidationError}</span>
+        )}
+      </label>
+      <label className="person-form__field">
+        <span className="person-form__label">
+          <span className="life-dates__symbol life-dates__symbol--death" aria-hidden>
+            {DEATH_SYMBOL}
+          </span>{" "}
+          Ölüm tarihi
+        </span>
+        <input
+          value={deathDate}
+          onChange={(e) => setDeathDate(e.target.value)}
+          placeholder={BIRTH_DATE_HINT}
+          inputMode="numeric"
+        />
+        {deathDateValidationError && (
+          <span className="person-form__field-error">{deathDateValidationError}</span>
         )}
       </label>
       <label className="person-form__field">
@@ -109,7 +135,8 @@ export function CreatePersonForm({
           disabled={
             loading ||
             (!givenName.trim() && !surname.trim()) ||
-            !!birthDateValidationError
+            !!birthDateValidationError ||
+            !!deathDateValidationError
           }
         >
           {loading ? "…" : submitLabel}
