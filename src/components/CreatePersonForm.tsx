@@ -30,7 +30,7 @@ export function CreatePersonForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!givenName.trim() || !surname.trim()) return;
+    if (!givenName.trim() && !surname.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -64,7 +64,6 @@ export function CreatePersonForm({
         <input
           value={surname}
           onChange={(e) => setSurname(e.target.value)}
-          required
         />
       </label>
       <label className="person-form__field">
@@ -86,7 +85,11 @@ export function CreatePersonForm({
             İptal
           </button>
         )}
-        <button type="submit" className="btn btn--primary" disabled={loading}>
+        <button
+          type="submit"
+          className="btn btn--primary"
+          disabled={loading || (!givenName.trim() && !surname.trim())}
+        >
           {loading ? "…" : submitLabel}
         </button>
       </div>

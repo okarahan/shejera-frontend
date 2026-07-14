@@ -28,7 +28,7 @@ export function EditPersonForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!givenName.trim() || !surname.trim()) return;
+    if (!givenName.trim() && !surname.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -63,7 +63,6 @@ export function EditPersonForm({
         <input
           value={surname}
           onChange={(e) => setSurname(e.target.value)}
-          required
         />
       </label>
       <label className="person-form__field">
@@ -91,7 +90,11 @@ export function EditPersonForm({
         <button type="button" className="btn btn--ghost" onClick={onCancel}>
           İptal
         </button>
-        <button type="submit" className="btn btn--primary" disabled={loading}>
+        <button
+          type="submit"
+          className="btn btn--primary"
+          disabled={loading || (!givenName.trim() && !surname.trim())}
+        >
           {loading ? "…" : "Kaydet"}
         </button>
       </div>

@@ -21,7 +21,7 @@ export interface Individual {
 
 export interface CreateIndividualRequest {
   givenName: string;
-  surname: string;
+  surname?: string;
   sex?: Sex;
   isLiving?: boolean;
   biography?: string;

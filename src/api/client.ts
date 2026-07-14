@@ -32,7 +32,7 @@ export const api = {
   createIndividual: (body: CreateIndividualRequest) =>
     request<Individual>("/individuals", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({ surname: "", ...body }),
     }),
 
   updateIndividual: (id: string, body: UpdateIndividualRequest) =>
