@@ -177,13 +177,6 @@ export function PersonPanel({
         <button
           type="button"
           className="btn btn--secondary"
-          onClick={() => onAction("edit")}
-        >
-          Düzenle
-        </button>
-        <button
-          type="button"
-          className="btn btn--secondary"
           onClick={() => onAction("add-child")}
         >
           + Çocuk
@@ -205,6 +198,14 @@ export function PersonPanel({
           </button>
         )}
       </div>
+
+      <button
+        type="button"
+        className="btn btn--primary btn--panel-edit"
+        onClick={() => onAction("edit")}
+      >
+        Düzenle
+      </button>
 
       <button
         type="button"

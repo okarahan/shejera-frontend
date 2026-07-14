@@ -264,6 +264,7 @@ select {
   background: var(--surface);
   box-shadow: var(--shadow);
   cursor: pointer;
+  text-align: left;
   transition: border-color 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: stretch;
@@ -319,6 +320,9 @@ select {
   flex: 1;
   min-width: 0;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .person-card__name {
@@ -346,8 +350,9 @@ select {
 
 .person-card__dates.life-dates {
   margin-top: 0.15rem;
-  width: 100%;
-  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  align-self: flex-start;
 }
 
 .life-dates--stacked {
@@ -357,7 +362,8 @@ select {
 }
 
 .life-dates--stacked .life-dates__item {
-  max-width: 100%;
+  width: auto;
+  justify-content: flex-start;
 }
 
 .life-dates {
@@ -373,11 +379,13 @@ select {
 .life-dates__item {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.15rem;
   min-width: 0;
 }
 
 .life-dates__value {
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -389,8 +397,12 @@ select {
 }
 
 .life-dates__symbol {
+  display: inline-block;
+  width: 0.65rem;
+  flex-shrink: 0;
   font-weight: 700;
   line-height: 1;
+  text-align: left;
 }
 
 .life-dates__symbol--birth,
@@ -634,8 +646,16 @@ select {
 
 .btn--delete {
   width: 100%;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   padding: 0.55rem 0.85rem;
+  font-weight: 600;
+}
+
+.btn--panel-edit {
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 
