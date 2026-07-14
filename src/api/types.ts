@@ -17,6 +17,7 @@ export interface Individual {
   givenName?: string;
   surname?: string;
   biography?: string | null;
+  birthDate?: string | null;
 }
 
 export interface CreateIndividualRequest {
@@ -25,6 +26,7 @@ export interface CreateIndividualRequest {
   sex?: Sex;
   isLiving?: boolean;
   biography?: string;
+  birthDate?: string;
 }
 
 export interface UpdateIndividualRequest {
@@ -33,6 +35,7 @@ export interface UpdateIndividualRequest {
   sex?: Sex;
   isLiving?: boolean;
   biography?: string;
+  birthDate?: string;
 }
 
 export interface Spouse {

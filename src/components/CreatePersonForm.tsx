@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
 import type { Sex } from "../api/types";
+import { BIRTH_DATE_HINT, birthDateError } from "../lib/birthDate";
 
 export interface PersonFormData {
   givenName: string;
   surname: string;
   sex?: Sex;
+  birthDate?: string;
 }
 
 interface CreatePersonFormProps {
@@ -24,13 +26,16 @@ export function CreatePersonForm({
 }: CreatePersonFormProps) {
   const [givenName, setGivenName] = useState("");
   const [surname, setSurname] = useState(defaultSurname);
+  const [birthDate, setBirthDate] = useState("");
   const [sex, setSex] = useState<Sex | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const birthDateValidationError = birthDateError(birthDate);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!givenName.trim() && !surname.trim()) return;
+    if (birthDateValidationError) return;
     setLoading(true);
     setError(null);
     try {
@@ -38,6 +43,7 @@ export function CreatePersonForm({
         givenName: givenName.trim(),
         surname: surname.trim(),
         sex: sex || undefined,
+        birthDate: birthDate.trim() || undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Hata");
@@ -67,6 +73,18 @@ export function CreatePersonForm({
         />
       </label>
       <label className="person-form__field">
+        Doğum tarihi
+        <input
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+          placeholder={BIRTH_DATE_HINT}
+          inputMode="numeric"
+        />
+        {birthDateValidationError && (
+          <span className="person-form__field-error">{birthDateValidationError}</span>
+        )}
+      </label>
+      <label className="person-form__field">
         Cinsiyet
         <select
           value={sex}
@@ -88,7 +106,11 @@ export function CreatePersonForm({
         <button
           type="submit"
           className="btn btn--primary"
-          disabled={loading || (!givenName.trim() && !surname.trim())}
+          disabled={
+            loading ||
+            (!givenName.trim() && !surname.trim()) ||
+            !!birthDateValidationError
+          }
         >
           {loading ? "…" : submitLabel}
         </button>

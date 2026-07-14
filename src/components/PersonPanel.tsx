@@ -110,6 +110,12 @@ export function PersonPanel({
         )}
         <dt>Durum</dt>
         <dd>{person.isLiving ? "Yaşıyor" : "Vefat etmiş"}</dd>
+        {person.birthDate && (
+          <>
+            <dt>Doğum tarihi</dt>
+            <dd>{person.birthDate}</dd>
+          </>
+        )}
       </dl>
 
       {person.biography && (
