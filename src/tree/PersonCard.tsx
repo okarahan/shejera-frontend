@@ -33,15 +33,25 @@ export const PersonCard = forwardRef<HTMLButtonElement, PersonCardProps>(
         style={{ left: x, top: y, width: CARD_WIDTH, height: CARD_HEIGHT }}
         onClick={onClick}
       >
-        <div
-          className="person-card__avatar"
-          style={{ background: avatarColor(person.sex) }}
-        >
-          {initials(person)}
+        <div className="person-card__photo" aria-hidden>
+          <span
+            className="person-card__photo-placeholder"
+            style={{ background: avatarColor(person.sex) }}
+          >
+            {initials(person)}
+          </span>
         </div>
-        <div className="person-card__name">{person.givenName ?? "—"}</div>
-        <div className="person-card__surname">{person.surname ?? ""}</div>
-        <span className="person-card__sr-only">{personLabel(person)}</span>
+        <div className="person-card__body">
+          <div className="person-card__name">{person.givenName ?? "—"}</div>
+          <div className="person-card__surname">{person.surname ?? ""}</div>
+          {person.birthDate && (
+            <div className="person-card__birth">{person.birthDate}</div>
+          )}
+        </div>
+        <span className="person-card__sr-only">
+          {personLabel(person)}
+          {person.birthDate ? `, ${person.birthDate}` : ""}
+        </span>
       </button>
     );
   },

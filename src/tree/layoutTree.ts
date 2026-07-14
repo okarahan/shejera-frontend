@@ -1,7 +1,7 @@
 import type { TreeEdge, TreeNode } from "./buildGraph";
 
 export const CARD_WIDTH = 168;
-export const CARD_HEIGHT = 108;
+export const CARD_HEIGHT = 132;
 export const H_GAP = 28;
 export const V_GAP = 88;
 export const SPOUSE_GAP = 16;
