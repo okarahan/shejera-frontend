@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api/client";
 import type { Family, Individual, IndividualRelationships } from "./api/types";
 import {
@@ -18,6 +18,7 @@ import {
   deleteBlockedMessage,
 } from "./api/relationships";
 import { FamilyTree } from "./tree/FamilyTree";
+import { layoutTree } from "./tree/layoutTree";
 import { TreeZoomControls } from "./tree/TreeZoomControls";
 import { useZoom } from "./tree/useZoom";
 
@@ -42,7 +43,8 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { zoom, zoomIn, zoomOut, resetZoom } = useZoom();
+  const treeAreaRef = useRef<HTMLDivElement>(null);
+  const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom();
 
   const refresh = useCallback(async (keepSelectedId?: string | null) => {
     const data = await loadData();
@@ -88,6 +90,50 @@ export default function App() {
     () => buildFullTreeGraph(individuals, families),
     [individuals, families],
   );
+
+  const treeLayout = useMemo(
+    () => layoutTree(graph.nodes, graph.edges),
+    [graph],
+  );
+
+  const treePadding = 64;
+  const treeContentWidth = treeLayout.width + treePadding;
+  const treeContentHeight = treeLayout.height + treePadding;
+
+  useEffect(() => {
+    const el = treeAreaRef.current;
+    if (!el || graph.nodes.length === 0) return;
+
+    const updateFit = () => {
+      applyFitIfNeeded(
+        treeContentWidth,
+        treeContentHeight,
+        el.clientWidth,
+        el.clientHeight,
+      );
+    };
+
+    updateFit();
+    const observer = new ResizeObserver(updateFit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [
+    applyFitIfNeeded,
+    graph.nodes.length,
+    treeContentWidth,
+    treeContentHeight,
+  ]);
+
+  const handleResetZoom = useCallback(() => {
+    const el = treeAreaRef.current;
+    if (!el) return;
+    resetZoom(
+      treeContentWidth,
+      treeContentHeight,
+      el.clientWidth,
+      el.clientHeight,
+    );
+  }, [resetZoom, treeContentWidth, treeContentHeight]);
 
   const selected = individuals.find((i) => i.id === selectedId) ?? null;
 
@@ -234,12 +280,12 @@ export default function App() {
           className="workspace"
           data-panel-open={panelOpen}
         >
-          <div className="workspace__tree">
+          <div className="workspace__tree" ref={treeAreaRef}>
             <TreeZoomControls
               zoom={zoom}
               onZoomIn={zoomIn}
               onZoomOut={zoomOut}
-              onReset={resetZoom}
+              onReset={handleResetZoom}
             />
             {graph.nodes.length > 0 ? (
               <div className="tree-viewport">
