@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api/client";
 import type { Family, Individual, IndividualRelationships } from "./api/types";
+import { AppMenu } from "./components/AppMenu";
 import {
   CreatePersonForm,
   type PersonFormData,
 } from "./components/CreatePersonForm";
 import type { EditPersonFormData } from "./components/EditPersonForm";
+import { ImportDialog } from "./components/ImportDialog";
+import { ImportProcessingDialog } from "./components/ImportProcessingDialog";
+import { ImportPreviewPage } from "./components/ImportPreviewPage";
 import {
   partnerRoleFor,
   PersonPanel,
@@ -21,6 +25,8 @@ import { FamilyTree } from "./tree/FamilyTree";
 import { layoutTree } from "./tree/layoutTree";
 import { TreeZoomControls } from "./tree/TreeZoomControls";
 import { useZoom } from "./tree/useZoom";
+
+type AppView = "tree" | "import-preview";
 
 async function loadData(): Promise<{
   individuals: Individual[];
@@ -43,6 +49,9 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<AppView>("tree");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
   const treeAreaRef = useRef<HTMLDivElement>(null);
   const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom();
 
@@ -263,9 +272,39 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1 className="header__title">Shejera</h1>
+        <AppMenu
+          onImport={() => {
+            setImportDialogOpen(true);
+          }}
+        />
       </header>
 
-      {individuals.length === 0 ? (
+      {importDialogOpen && (
+        <ImportDialog
+          onClose={() => setImportDialogOpen(false)}
+          onStartProcessing={() => {
+            setImportDialogOpen(false);
+            setProcessingDialogOpen(true);
+          }}
+        />
+      )}
+
+      {processingDialogOpen && (
+        <ImportProcessingDialog
+          onClose={() => setProcessingDialogOpen(false)}
+          onPreview={() => {
+            setProcessingDialogOpen(false);
+            setView("import-preview");
+          }}
+        />
+      )}
+
+      {view === "import-preview" ? (
+        <ImportPreviewPage
+          onBack={() => setView("tree")}
+          onOpenImport={() => setImportDialogOpen(true)}
+        />
+      ) : individuals.length === 0 ? (
         <div className="empty-state">
           <h2>Soy ağacını başlat</h2>
           <p>İlk kişiyi ekle.</p>
