@@ -111,3 +111,48 @@ export interface IndividualRelationships {
   children: RelatedIndividual[];
   parents: RelatedIndividual[];
 }
+
+export interface ImportUploadResponse {
+  originalFileName: string;
+  storedFileName: string;
+  storedPath: string;
+  contentType?: string | null;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+export interface ImportStatusResponse {
+  hasUpload: boolean;
+  originalFileName?: string | null;
+  storedFileName?: string | null;
+  storedPath?: string | null;
+  uploadedAt?: string | null;
+  hasScanResult: boolean;
+  scannedAt?: string | null;
+}
+
+export interface ImportScanResponse {
+  scannedAt: string;
+  personCount: number;
+  familyCount: number;
+}
+
+export interface RecognizedPerson {
+  tempId: string;
+  givenName?: string | null;
+  surname?: string | null;
+  birthDate?: string | null;
+  deathDate?: string | null;
+  sex?: string | null;
+}
+
+export interface RecognizedFamily {
+  tempId: string;
+  spouseTempIds: string[];
+  childTempIds: string[];
+}
+
+export interface RecognizedTree {
+  people: RecognizedPerson[];
+  families: RecognizedFamily[];
+}

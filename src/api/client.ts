@@ -3,8 +3,12 @@ import type {
   CreateFamilyRequest,
   CreateIndividualRequest,
   Family,
+  ImportScanResponse,
+  ImportStatusResponse,
+  ImportUploadResponse,
   Individual,
   IndividualRelationships,
+  RecognizedTree,
   UpdateIndividualRequest,
 } from "./types";
 
@@ -60,4 +64,25 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  getImportStatus: () => request<ImportStatusResponse>("/imports/status"),
+
+  uploadImportImage: async (file: File): Promise<ImportUploadResponse> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${BASE}/imports/upload`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((body as { error?: string }).error ?? res.statusText);
+    }
+    return res.json() as Promise<ImportUploadResponse>;
+  },
+
+  scanImport: () =>
+    request<ImportScanResponse>("/imports/scan", { method: "POST" }),
+
+  getImportPreview: () => request<RecognizedTree>("/imports/preview"),
 };
