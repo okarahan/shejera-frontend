@@ -81,7 +81,8 @@ export function ImportDialog({ onClose, onStartProcessing }: ImportDialogProps) 
 
         <div className="import-dialog__body">
           <p className="muted">
-            Soy ağacı görselini seçip yükleyin, ardından işlemeyi başlatın.
+            Soy ağacı görselini seçip yükleyin. &quot;İşleme başla&quot; ile
+            backend gerçek taramayı başlatır.
           </p>
 
           {error && <p className="person-form__error">{error}</p>}

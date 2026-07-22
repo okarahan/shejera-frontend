@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { RecognizedTree } from "../api/types";
-import { LifeDates } from "./LifeDates";
+import { FamilyTree } from "../tree/FamilyTree";
+import { layoutTree } from "../tree/layoutTree";
+import { buildRecognizedTreeGraph } from "../tree/recognizedToGraph";
+import { TreeZoomControls } from "../tree/TreeZoomControls";
+import { useZoom } from "../tree/useZoom";
 
 interface ImportPreviewPageProps {
   onBack: () => void;
   onOpenImport: () => void;
-}
-
-function personLabel(person: RecognizedTree["people"][number]): string {
-  return [person.givenName, person.surname].filter(Boolean).join(" ") || person.tempId;
 }
 
 export function ImportPreviewPage({
@@ -19,6 +19,8 @@ export function ImportPreviewPage({
   const [tree, setTree] = useState<RecognizedTree | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const treeAreaRef = useRef<HTMLDivElement>(null);
+  const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom(1);
 
   useEffect(() => {
     setLoading(true);
@@ -31,84 +33,105 @@ export function ImportPreviewPage({
       .finally(() => setLoading(false));
   }, []);
 
-  const peopleById = new Map((tree?.people ?? []).map((p) => [p.tempId, p]));
+  const graph = useMemo(
+    () => (tree ? buildRecognizedTreeGraph(tree) : null),
+    [tree],
+  );
+
+  const treeLayout = useMemo(
+    () => (graph ? layoutTree(graph.nodes, graph.edges) : null),
+    [graph],
+  );
+
+  const treePadding = 64;
+  const treeContentWidth = (treeLayout?.width ?? 0) + treePadding;
+  const treeContentHeight = (treeLayout?.height ?? 0) + treePadding;
+
+  useEffect(() => {
+    const el = treeAreaRef.current;
+    if (!el || !graph || graph.nodes.length === 0) return;
+
+    const updateFit = () => {
+      applyFitIfNeeded(
+        treeContentWidth,
+        treeContentHeight,
+        el.clientWidth,
+        el.clientHeight,
+      );
+    };
+
+    updateFit();
+    const observer = new ResizeObserver(updateFit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [
+    applyFitIfNeeded,
+    graph,
+    treeContentWidth,
+    treeContentHeight,
+  ]);
+
+  const handleResetZoom = useCallback(() => {
+    const el = treeAreaRef.current;
+    if (!el) return;
+    resetZoom(
+      treeContentWidth,
+      treeContentHeight,
+      el.clientWidth,
+      el.clientHeight,
+    );
+  }, [resetZoom, treeContentWidth, treeContentHeight]);
 
   return (
     <div className="import-preview">
-      <div className="import-preview__toolbar">
-        <button type="button" className="btn btn--ghost" onClick={onBack}>
-          ← Ağaca dön
-        </button>
-        <button type="button" className="btn btn--secondary" onClick={onOpenImport}>
-          Importu düzenle
-        </button>
+      <div className="import-preview__header">
+        <div className="import-preview__toolbar">
+          <button type="button" className="btn btn--ghost" onClick={onBack}>
+            ← Ağaca dön
+          </button>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={onOpenImport}
+          >
+            Importu düzenle
+          </button>
+        </div>
+
+        <h2 className="import-preview__title">İşlenen soy ağacı önizlemesi</h2>
+        <p className="muted import-preview__subtitle">
+          Bu aşamada ağaç henüz kaydedilmez.
+          {tree
+            ? ` ${tree.people.length} kişi, ${tree.families.length} aile tanındı.`
+            : ""}
+        </p>
       </div>
 
-      <h2 className="import-preview__title">İşlenen soy ağacı önizlemesi</h2>
-      <p className="muted">
-        Bu aşamada ağaç henüz kaydedilmez. Eşleştirme ve aktarma sonraki adımda
-        gelecek.
-      </p>
-
-      {loading && <p>Yükleniyor…</p>}
+      {loading && <p className="import-preview__status">Yükleniyor…</p>}
       {error && <p className="person-form__error">{error}</p>}
 
-      {tree && (
-        <div className="import-preview__grid">
-          <section className="import-preview__section">
-            <h3>Kişiler ({tree.people.length})</h3>
-            <ul className="import-preview__list">
-              {tree.people.map((person) => (
-                <li key={person.tempId} className="import-preview__person">
-                  <div className="import-preview__person-name">
-                    {personLabel(person)}
-                  </div>
-                  <LifeDates
-                    birthDate={person.birthDate}
-                    deathDate={person.deathDate}
-                    yearOnly
-                    className="life-dates"
-                  />
-                  <div className="muted import-preview__meta">
-                    {person.tempId}
-                    {person.sex ? ` · ${person.sex}` : ""}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+      {!loading && !error && graph && graph.nodes.length === 0 && (
+        <p className="muted import-preview__status">
+          Önizlenecek kişi bulunamadı.
+        </p>
+      )}
 
-          <section className="import-preview__section">
-            <h3>Aileler ({tree.families.length})</h3>
-            <ul className="import-preview__list">
-              {tree.families.map((family) => {
-                const spouses = family.spouseTempIds
-                  .map((id) => peopleById.get(id))
-                  .filter(Boolean)
-                  .map((p) => personLabel(p!))
-                  .join(" & ");
-                const children = family.childTempIds
-                  .map((id) => peopleById.get(id))
-                  .filter(Boolean)
-                  .map((p) => personLabel(p!));
-
-                return (
-                  <li key={family.tempId} className="import-preview__family">
-                    <div className="import-preview__person-name">
-                      {spouses || "—"}
-                    </div>
-                    {children.length > 0 && (
-                      <ul className="import-preview__children">
-                        {children.map((name) => (
-                          <li key={name}>{name}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+      {graph && graph.nodes.length > 0 && (
+        <div className="import-preview__tree" ref={treeAreaRef}>
+          <TreeZoomControls
+            zoom={zoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onReset={handleResetZoom}
+          />
+          <div className="tree-viewport">
+            <FamilyTree
+              graph={graph}
+              selectedId={null}
+              zoom={zoom}
+              onSelect={() => {}}
+            />
+          </div>
         </div>
       )}
     </div>

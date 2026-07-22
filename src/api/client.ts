@@ -14,13 +14,24 @@ import type {
 
 const BASE = "/api";
 
+/** CV OCR can take several minutes on large images. */
+const SCAN_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** Deduplicate overlapping scan calls (React Strict Mode double-mount). */
+let inflightScan: Promise<ImportScanResponse> | null = null;
+
 async function request<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body != null && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
+    headers,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -81,8 +92,17 @@ export const api = {
     return res.json() as Promise<ImportUploadResponse>;
   },
 
-  scanImport: () =>
-    request<ImportScanResponse>("/imports/scan", { method: "POST" }),
+  scanImport: (): Promise<ImportScanResponse> => {
+    if (!inflightScan) {
+      inflightScan = request<ImportScanResponse>("/imports/scan", {
+        method: "POST",
+        signal: AbortSignal.timeout(SCAN_TIMEOUT_MS),
+      }).finally(() => {
+        inflightScan = null;
+      });
+    }
+    return inflightScan;
+  },
 
   getImportPreview: () => request<RecognizedTree>("/imports/preview"),
 };

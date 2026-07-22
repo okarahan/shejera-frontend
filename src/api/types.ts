@@ -129,12 +129,14 @@ export interface ImportStatusResponse {
   uploadedAt?: string | null;
   hasScanResult: boolean;
   scannedAt?: string | null;
+  recognizer: string;
 }
 
 export interface ImportScanResponse {
   scannedAt: string;
   personCount: number;
   familyCount: number;
+  recognizer: string;
 }
 
 export interface RecognizedPerson {
@@ -143,7 +145,9 @@ export interface RecognizedPerson {
   surname?: string | null;
   birthDate?: string | null;
   deathDate?: string | null;
+  birthPlace?: string | null;
   sex?: string | null;
+  role?: string | null;
 }
 
 export interface RecognizedFamily {

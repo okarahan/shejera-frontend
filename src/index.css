@@ -229,15 +229,22 @@ select {
 
 .import-preview {
   flex: 1;
-  padding: 1.5rem;
-  overflow: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.import-preview__header {
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem 0.75rem;
 }
 
 .import-preview__toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .import-preview__title {
@@ -245,50 +252,23 @@ select {
   font-size: 1.2rem;
 }
 
-.import-preview__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1.25rem;
-  margin-top: 1.25rem;
-}
-
-.import-preview__section h3 {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
-}
-
-.import-preview__list {
-  list-style: none;
+.import-preview__subtitle {
   margin: 0;
-  padding: 0;
+}
+
+.import-preview__status {
+  padding: 0 1.5rem 1rem;
+}
+
+.import-preview__tree {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem 1.5rem 1.5rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.import-preview__person,
-.import-preview__family {
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-}
-
-.import-preview__person-name {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.import-preview__meta {
-  margin-top: 0.35rem;
-  font-size: 0.75rem;
-}
-
-.import-preview__children {
-  margin: 0.4rem 0 0;
-  padding-left: 1.1rem;
-  color: var(--muted);
-  font-size: 0.875rem;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .header__root {

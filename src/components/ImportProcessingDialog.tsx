@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
 interface ImportProcessingDialogProps {
@@ -14,44 +14,43 @@ export function ImportProcessingDialog({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
-  const startedRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
     let cancelled = false;
     let tickId = 0;
 
     async function run() {
       setError(null);
       setDone(false);
-      setProgress(8);
+      setProgress(5);
 
       tickId = window.setInterval(() => {
         setProgress((value) => {
-          if (value >= 90) return value;
-          return value + Math.max(1, Math.round((90 - value) * 0.08));
+          if (value >= 92) return value;
+          return value + Math.max(1, Math.round((92 - value) * 0.04));
         });
-      }, 120);
+      }, 400);
 
       try {
-        const [result] = await Promise.all([
-          api.scanImport(),
-          new Promise((resolve) => window.setTimeout(resolve, 900)),
-        ]);
+        const result = await api.scanImport();
         if (cancelled) return;
         window.clearInterval(tickId);
         setProgress(100);
         setSummary(
-          `${result.personCount} kişi, ${result.familyCount} aile işlendi.`,
+          `${result.personCount} kişi, ${result.familyCount} aile (${result.recognizer})`,
         );
         setDone(true);
       } catch (err) {
         if (cancelled) return;
         window.clearInterval(tickId);
         setProgress(0);
-        setError(err instanceof Error ? err.message : "İşleme başarısız");
+        const message =
+          err instanceof Error ? err.message : "İşleme başarısız";
+        setError(
+          message.includes("aborted") || message.includes("Timeout")
+            ? "İşleme zaman aşımına uğradı. Backend çalışıyor mu?"
+            : message,
+        );
       }
     }
 
@@ -104,7 +103,10 @@ export function ImportProcessingDialog({
               </span>
             </p>
           ) : (
-            <p className="muted">Soy ağacı görseli analiz ediliyor…</p>
+            <p className="muted">
+              Backend görseli OpenCV/Tesseract ile analiz ediyor… Bu birkaç
+              dakika sürebilir.
+            </p>
           )}
 
           <div

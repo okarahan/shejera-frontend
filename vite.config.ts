@@ -9,6 +9,9 @@ export default defineConfig({
         target: "http://localhost:8080",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
+        // CV scan can take several minutes
+        timeout: 600_000,
+        proxyTimeout: 600_000,
       },
     },
   },
