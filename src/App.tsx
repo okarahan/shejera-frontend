@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api/client";
-import type { Family, Individual, IndividualRelationships } from "./api/types";
+import type {
+  Family,
+  Individual,
+  IndividualRelationships,
+  MeResponse,
+  TreeResponse,
+} from "./api/types";
 import { AppMenu } from "./components/AppMenu";
+import { InvitesAdmin } from "./components/InvitesAdmin";
 import {
   CreatePersonForm,
   type PersonFormData,
@@ -39,7 +46,23 @@ async function loadData(): Promise<{
   return { individuals, families };
 }
 
-export default function App() {
+interface AppProps {
+  me: MeResponse;
+  trees: TreeResponse[];
+  activeTreeId: string | null;
+  onTreesChanged: () => Promise<void>;
+  onSelectTree: (treeId: string) => void;
+  onLogout: () => Promise<void>;
+}
+
+export default function App({
+  me,
+  trees,
+  activeTreeId,
+  onTreesChanged,
+  onSelectTree,
+  onLogout,
+}: AppProps) {
   const [individuals, setIndividuals] = useState<Individual[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -52,8 +75,12 @@ export default function App() {
   const [view, setView] = useState<AppView>("tree");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
+  const [invitesOpen, setInvitesOpen] = useState(false);
   const treeAreaRef = useRef<HTMLDivElement>(null);
   const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom();
+
+  const activeTree = trees.find((t) => t.id === activeTreeId) ?? null;
+  const canWrite = activeTree?.canWrite ?? false;
 
   const refresh = useCallback(async (keepSelectedId?: string | null) => {
     const data = await loadData();
@@ -83,17 +110,20 @@ export default function App() {
   }, [selectedId]);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
+    setSelectedId(null);
     refresh()
       .then((data) => {
         if (data.individuals.length > 0) {
-          setSelectedId((prev) => prev ?? data.individuals[0].id);
+          setSelectedId(data.individuals[0].id);
         }
       })
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Yükleme başarısız"),
       )
       .finally(() => setLoading(false));
-  }, [refresh]);
+  }, [activeTreeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const graph = useMemo(
     () => buildFullTreeGraph(individuals, families),
@@ -147,6 +177,7 @@ export default function App() {
   const selected = individuals.find((i) => i.id === selectedId) ?? null;
 
   async function handleCreateFirstPerson(data: PersonFormData) {
+    if (!canWrite) return;
     const created = await api.createIndividual(data);
     await refresh();
     setSelectedId(created.id);
@@ -156,7 +187,7 @@ export default function App() {
     data: PersonFormData,
     action: PanelAction,
   ) {
-    if (!selected || !action) return;
+    if (!canWrite || !selected || !action) return;
 
     const created = await api.createIndividual(data);
 
@@ -209,14 +240,14 @@ export default function App() {
   }
 
   async function handleUpdatePerson(data: EditPersonFormData) {
-    if (!selected) return;
+    if (!canWrite || !selected) return;
     await api.updateIndividual(selected.id, data);
     await refresh();
     setPanelAction(null);
   }
 
   async function handleDeletePerson() {
-    if (!selected) return;
+    if (!canWrite || !selected) return;
 
     const eligibility = relationships;
     if (!eligibility || !canDeleteIndividual(eligibility)) {
@@ -273,11 +304,39 @@ export default function App() {
       <header className="header">
         <h1 className="header__title">Shejera</h1>
         <AppMenu
-          onImport={() => {
-            setImportDialogOpen(true);
+          me={me}
+          trees={trees}
+          activeTreeId={activeTreeId}
+          onImport={() => setImportDialogOpen(true)}
+          onInvites={() => setInvitesOpen(true)}
+          onCreateContribution={() => {
+            const name = window.prompt("Name für Beitragsbaum");
+            if (!name?.trim()) return;
+            void api
+              .createContributionTree({ name: name.trim(), expiresInDays: 30 })
+              .then(async (tree) => {
+                await onTreesChanged();
+                onSelectTree(tree.id);
+              })
+              .catch((err) =>
+                window.alert(err instanceof Error ? err.message : "Fehler"),
+              );
           }}
+          onSubmitContribution={() => {
+            if (!activeTreeId) return;
+            void api
+              .submitContributionTree(activeTreeId)
+              .then(() => onTreesChanged())
+              .catch((err) =>
+                window.alert(err instanceof Error ? err.message : "Fehler"),
+              );
+          }}
+          onSelectTree={onSelectTree}
+          onLogout={() => void onLogout()}
         />
       </header>
+
+      {invitesOpen && <InvitesAdmin onClose={() => setInvitesOpen(false)} />}
 
       {importDialogOpen && (
         <ImportDialog
@@ -303,16 +362,27 @@ export default function App() {
         <ImportPreviewPage
           onBack={() => setView("tree")}
           onOpenImport={() => setImportDialogOpen(true)}
+          onCommitted={async (treeId) => {
+            await onTreesChanged();
+            onSelectTree(treeId);
+            setView("tree");
+          }}
         />
       ) : individuals.length === 0 ? (
         <div className="empty-state">
           <h2>Soy ağacını başlat</h2>
-          <p>İlk kişiyi ekle.</p>
-          <CreatePersonForm
-            title="İlk kişi"
-            submitLabel="Ekle"
-            onSubmit={handleCreateFirstPerson}
-          />
+          {canWrite ? (
+            <>
+              <p>İlk kişiyi ekle.</p>
+              <CreatePersonForm
+                title="İlk kişi"
+                submitLabel="Ekle"
+                onSubmit={handleCreateFirstPerson}
+              />
+            </>
+          ) : (
+            <p className="muted">Dieser Baum ist leer oder nur lesbar.</p>
+          )}
         </div>
       ) : (
         <div
@@ -362,12 +432,13 @@ export default function App() {
               <PersonPanel
                 person={selected}
                 relationships={relationships}
-                activeAction={panelAction}
-                onAction={setPanelAction}
+                activeAction={canWrite ? panelAction : null}
+                onAction={canWrite ? setPanelAction : () => {}}
                 onCreatePerson={handleCreateRelated}
                 onUpdatePerson={handleUpdatePerson}
                 onDeletePerson={handleDeletePerson}
                 onCancelAction={() => setPanelAction(null)}
+                readOnly={!canWrite}
               />
             ) : (
               <p className="muted">Ağaçtan bir kişi seçin.</p>

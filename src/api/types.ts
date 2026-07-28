@@ -160,3 +160,68 @@ export interface RecognizedTree {
   people: RecognizedPerson[];
   families: RecognizedFamily[];
 }
+
+export type UserRole = "admin" | "contributor";
+
+export interface MeResponse {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  canManageInvites: boolean;
+  canWriteMainTree: boolean;
+  contributionTreeId?: string | null;
+  contributionTreeStatus?: string | null;
+}
+
+export interface InvitePreviewResponse {
+  email: string;
+  displayName: string;
+  role: UserRole;
+  status: string;
+  expired: boolean;
+}
+
+export interface InviteResponse {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  status: string;
+  token?: string | null;
+  invitePath?: string | null;
+  /** Absolute URL when backend SHEJERA_INVITE_ORIGIN is set. */
+  inviteUrl?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+  redeemedAt?: string | null;
+}
+
+export interface CreateInviteRequest {
+  email: string;
+  displayName: string;
+  role?: UserRole;
+  expiresInDays?: number;
+}
+
+export interface TreeResponse {
+  id: string;
+  name: string;
+  kind: "main" | "contribution";
+  status?: string | null;
+  expiresAt?: string | null;
+  canWrite: boolean;
+  contributorUserId?: string | null;
+  createdAt: string;
+}
+
+export interface CreateContributionTreeRequest {
+  name: string;
+  expiresInDays?: number;
+}
+
+export interface ImportCommitResponse {
+  treeId: string;
+  personCount: number;
+  familyCount: number;
+}

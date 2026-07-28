@@ -19,31 +19,26 @@ Dev-Server: http://localhost:5173
 
 API-Aufrufe unter `/api/*` werden per Vite-Proxy an `http://localhost:8080` weitergeleitet (kein CORS in der Entwicklung).
 
-## Build
-
-```bash
-npm run build
-npm run preview
-```
-
 ## Image
 
 GitHub Actions pusht nach `ghcr.io/okarahan/shejera-frontend` bei Push auf `main` oder Tags `v*`.
 
-Nach erstem Push: Package auf **public** stellen unter GitHub → Packages.
-
-## Release
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
 ## Produktion (Ingress)
 
-Frontend und Backend unter **einer Domain** deployen, z. B.:
+Ein Host für UI + API, z. B.:
 
-- `/` → shejera-frontend (nginx)
-- `/api/` → shejera-backend
+- Public: `http://shejera.o.karahan.de`
+- Intern: `https://shejera.home.okarahan.arpa`
 
-So entstehen keine Cross-Origin-Probleme.
+Routing (SPA):
+
+- `/import/<token>`: Invite-Preview + Redeem (führt zu einem Import-JWT-Cookie)
+- `/import`: Import-Hub (Button → Dialog → Preview)
+- `/view`: Stub / später (aktuell Import-Fokus)
+- `/api/*`: shejera-backend
+
+Auth im Browser:
+
+- Backend setzt Cookie `shejera_session` (HttpOnly) nach Invite-Redeem.
+- Diese Cookie enthält ein stateless JWT; kein serverseitiges `app_session`-State benötigt.
+

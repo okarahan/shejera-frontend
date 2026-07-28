@@ -10,15 +10,18 @@ import { useZoom } from "../tree/useZoom";
 interface ImportPreviewPageProps {
   onBack: () => void;
   onOpenImport: () => void;
+  onCommitted: (treeId: string) => void;
 }
 
 export function ImportPreviewPage({
   onBack,
   onOpenImport,
+  onCommitted,
 }: ImportPreviewPageProps) {
   const [tree, setTree] = useState<RecognizedTree | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
   const treeAreaRef = useRef<HTMLDivElement>(null);
   const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom(1);
 
@@ -82,6 +85,19 @@ export function ImportPreviewPage({
     );
   }, [resetZoom, treeContentWidth, treeContentHeight]);
 
+  async function handleCommit() {
+    setCommitting(true);
+    setError(null);
+    try {
+      const result = await api.commitImport();
+      onCommitted(result.treeId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kaydetme başarısız");
+    } finally {
+      setCommitting(false);
+    }
+  }
+
   return (
     <div className="import-preview">
       <div className="import-preview__header">
@@ -96,11 +112,19 @@ export function ImportPreviewPage({
           >
             Importu düzenle
           </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={committing || !tree || tree.people.length === 0}
+            onClick={() => void handleCommit()}
+          >
+            {committing ? "Kaydediliyor…" : "Beitragsbaum speichern"}
+          </button>
         </div>
 
         <h2 className="import-preview__title">İşlenen soy ağacı önizlemesi</h2>
         <p className="muted import-preview__subtitle">
-          Bu aşamada ağaç henüz kaydedilmez.
+          Speichern legt einen temporären Beitragsbaum an (nicht den Hauptbaum).
           {tree
             ? ` ${tree.people.length} kişi, ${tree.families.length} aile tanındı.`
             : ""}
