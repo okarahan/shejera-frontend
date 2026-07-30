@@ -49,7 +49,7 @@ export function ImportProcessingDialog({
         setError(
           message.includes("aborted") || message.includes("Timeout")
             ? "İşleme zaman aşımına uğradı. Backend çalışıyor mu?"
-            : message,
+            : message || "İşleme başarısız (sunucu hatası).",
         );
       }
     }
