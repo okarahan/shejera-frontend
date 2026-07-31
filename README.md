@@ -21,7 +21,9 @@ API-Aufrufe unter `/api/*` werden per Vite-Proxy an `http://localhost:8080` weit
 
 ## Image
 
-GitHub Actions pusht nach `ghcr.io/okarahan/shejera-frontend` bei Push auf `main` oder Tags `v*`.
+GitHub Actions: Push auf `main` erzeugt automatisch den nächsten Patch-Tag (`v0.1.x`), der Tag-Build pusht nach `ghcr.io/okarahan/shejera-frontend`. Flux im Homelab aktualisiert das Deployment.
+
+Docs-only: Commit-Message mit `[skip release]` verhindert den Auto-Tag.
 
 ## Produktion (Ingress)
 
