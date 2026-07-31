@@ -7,21 +7,50 @@ interface InvitePageProps {
   onRedeemed: (me: MeResponse) => void;
 }
 
+/** Landing for `/contrib/{token}`: validates invite and redeems into a session. */
 export function InvitePage({ token, onRedeemed }: InvitePageProps) {
   const [preview, setPreview] = useState<InvitePreviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [needsManual, setNeedsManual] = useState(false);
 
   useEffect(() => {
-    api
-      .previewInvite(token)
-      .then(setPreview)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Davet geçersiz"),
-      );
-  }, [token]);
+    let cancelled = false;
 
-  async function redeem() {
+    async function run() {
+      setBusy(true);
+      setError(null);
+      setNeedsManual(false);
+      try {
+        const invite = await api.previewInvite(token);
+        if (cancelled) return;
+        setPreview(invite);
+
+        if (invite.expired || invite.status === "revoked") {
+          setBusy(false);
+          setNeedsManual(true);
+          return;
+        }
+
+        // Auto-redeem: invite link → session → parent redirects to tree or /contrib
+        const me = await api.redeemInvite(token);
+        if (cancelled) return;
+        onRedeemed(me);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Davet geçersiz");
+        setBusy(false);
+        setNeedsManual(true);
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, onRedeemed]);
+
+  async function redeemManual() {
     setBusy(true);
     setError(null);
     try {
@@ -29,9 +58,17 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
       onRedeemed(me);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kabul başarısız");
-    } finally {
       setBusy(false);
     }
+  }
+
+  if (busy && !needsManual) {
+    return (
+      <div className="app app--centered">
+        <h1>Shejera</h1>
+        <p className="muted">Davet kabul ediliyor…</p>
+      </div>
+    );
   }
 
   if (error && !preview) {
@@ -39,6 +76,9 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
       <div className="app app--centered">
         <h1>Shejera</h1>
         <p className="error-banner">{error}</p>
+        <p className="muted">
+          <a href="/contrib">Katkı sayfası</a>
+        </p>
       </div>
     );
   }
@@ -68,18 +108,16 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
         <p className="error-banner">Bu davet iptal edilmiş.</p>
       )}
       {error && <p className="error-banner">{error}</p>}
-      <button
-        type="button"
-        className="btn btn--primary"
-        disabled={busy || preview.expired || preview.status === "revoked"}
-        onClick={() => void redeem()}
-      >
-        {busy
-          ? "…"
-          : preview.status === "redeemed"
-            ? "Yeniden oturum aç"
-            : "Daveti kabul et"}
-      </button>
+      {!preview.expired && preview.status !== "revoked" && (
+        <button
+          type="button"
+          className="btn btn--primary"
+          disabled={busy}
+          onClick={() => void redeemManual()}
+        >
+          {busy ? "…" : "Daveti kabul et"}
+        </button>
+      )}
     </div>
   );
 }

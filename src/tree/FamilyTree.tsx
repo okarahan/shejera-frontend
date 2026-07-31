@@ -80,7 +80,7 @@ function buildEdgePaths(
         fromY = parent.y + CARD_HEIGHT;
       }
 
-      const midY = (fromY + childCenter.y - CARD_HEIGHT / 2) / 2;
+      const midY = fromY + Math.max(28, (childCenter.y - CARD_HEIGHT / 2 - fromY) * 0.45);
       const pathKey = `parent-${edge.from}-${edge.to}`;
 
       paths.push(

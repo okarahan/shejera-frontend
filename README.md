@@ -32,10 +32,15 @@ Ein Host für UI + API, z. B.:
 
 Routing (SPA):
 
-- `/import/<token>`: Invite-Preview + Redeem (führt zu einem Import-JWT-Cookie)
-- `/import`: Import-Hub (Button → Dialog → Preview)
-- `/view`: Stub / später (aktuell Import-Fokus)
+- `/contrib/<token>`: Invite redeem → Cookie `shejera_session`
+- `/contrib`: Contributor-Hub (İçe aktar-Dialog)
+- `/contrib/tree/<id>`: Beitragsbaum (gleicher Editor wie Main)
+- `/main/tree/<id>`: Hauptbaum (Authelia)
+- `/` → Redirect auf `/main/tree/<id>`
+- `/admin/*`: Einladungen
 - `/api/*`: shejera-backend
+
+**Authelia (Homelab / Traefik):** PathPrefix `/contrib` **ohne** Authelia (gesamte Contributor-Oberfläche inkl. Redeem). Hauptbaum und Admin weiter hinter Authelia.
 
 Auth im Browser:
 

@@ -33,6 +33,8 @@ interface PersonPanelProps {
   onDeletePerson: () => Promise<void>;
   onCancelAction: () => void;
   readOnly?: boolean;
+  /** When false, hide add-child/partner/parent and delete (contribution draft). */
+  allowStructureEdits?: boolean;
 }
 
 function spouseRoleForNewPartner(person: Individual): SpouseRole {
@@ -65,6 +67,7 @@ export function PersonPanel({
   onDeletePerson,
   onCancelAction,
   readOnly = false,
+  allowStructureEdits = true,
 }: PersonPanelProps) {
   const familyGroups = relationships
     ? [...relationshipsByFamily(relationships).entries()]
@@ -88,7 +91,7 @@ export function PersonPanel({
     );
   }
 
-  if (activeAction) {
+  if (activeAction && allowStructureEdits) {
     return (
       <CreatePersonForm
         title={formTitles[activeAction]}
@@ -177,31 +180,33 @@ export function PersonPanel({
 
       {!readOnly && (
         <>
-          <div className="person-panel__actions">
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => onAction("add-child")}
-            >
-              + Çocuk
-            </button>
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => onAction("add-partner")}
-            >
-              + Eş
-            </button>
-            {!hasParents && (
+          {allowStructureEdits && (
+            <div className="person-panel__actions">
               <button
                 type="button"
                 className="btn btn--secondary"
-                onClick={() => onAction("add-parent1")}
+                onClick={() => onAction("add-child")}
               >
-                + Ebeveyn
+                + Çocuk
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => onAction("add-partner")}
+              >
+                + Eş
+              </button>
+              {!hasParents && (
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={() => onAction("add-parent1")}
+                >
+                  + Ebeveyn
+                </button>
+              )}
+            </div>
+          )}
 
           <button
             type="button"
@@ -211,24 +216,28 @@ export function PersonPanel({
             Düzenle
           </button>
 
-          <button
-            type="button"
-            className="btn btn--danger btn--delete"
-            onClick={onDeletePerson}
-          >
-            Sil
-          </button>
+          {allowStructureEdits && (
+            <>
+              <button
+                type="button"
+                className="btn btn--danger btn--delete"
+                onClick={onDeletePerson}
+              >
+                Sil
+              </button>
 
-          {relationships && !canDeleteIndividual(relationships) && (
-            <p className="person-panel__delete-hint">
-              {deleteBlockedMessage(relationships)}
-            </p>
+              {relationships && !canDeleteIndividual(relationships) && (
+                <p className="person-panel__delete-hint">
+                  {deleteBlockedMessage(relationships)}
+                </p>
+              )}
+
+              <p className="person-panel__hint">
+                Yeni evlilikte rol: {partnerRoleFor(person)} / Eş:{" "}
+                {spouseRoleForNewPartner(person)}
+              </p>
+            </>
           )}
-
-          <p className="person-panel__hint">
-            Yeni evlilikte rol: {partnerRoleFor(person)} / Eş:{" "}
-            {spouseRoleForNewPartner(person)}
-          </p>
         </>
       )}
       {readOnly && <p className="muted">Salt okunur</p>}

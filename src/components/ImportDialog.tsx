@@ -10,7 +10,8 @@ const STEPS = ["Dosya seç", "Yükle", "İşleme başla"] as const;
 
 interface ImportDialogProps {
   onClose: () => void;
-  onPreview: () => void;
+  /** Called after OCR is committed into a contribution tree in the DB. */
+  onCommitted: (treeId: string) => void | Promise<void>;
 }
 
 function stepStatuses(
@@ -68,7 +69,7 @@ function ImportStepper({ statuses }: { statuses: StepStatus[] }) {
   );
 }
 
-export function ImportDialog({ onClose, onPreview }: ImportDialogProps) {
+export function ImportDialog({ onClose, onCommitted }: ImportDialogProps) {
   const [phase, setPhase] = useState<Phase>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [upload, setUpload] = useState<ImportUploadResponse | null>(null);
@@ -76,9 +77,10 @@ export function ImportDialog({ onClose, onPreview }: ImportDialogProps) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const busy = uploading || phase === "processing";
+  const busy = uploading || phase === "processing" || committing;
   const statuses = stepStatuses(phase, Boolean(file), uploading);
 
   async function handleUpload() {
@@ -131,6 +133,21 @@ export function ImportDialog({ onClose, onPreview }: ImportDialogProps) {
           : message || "İşleme başarısız (sunucu hatası).",
       );
       setPhase("error");
+    }
+  }
+
+  async function handleCommitAndOpen() {
+    if (phase !== "done" || committing) return;
+    setCommitting(true);
+    setError(null);
+    try {
+      const result = await api.commitImport();
+      await onCommitted(result.treeId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kaydetme başarısız");
+      setPhase("error");
+    } finally {
+      setCommitting(false);
     }
   }
 
@@ -300,10 +317,10 @@ export function ImportDialog({ onClose, onPreview }: ImportDialogProps) {
             <button
               type="button"
               className="btn btn--primary"
-              onClick={onPreview}
-              disabled={phase !== "done"}
+              onClick={() => void handleCommitAndOpen()}
+              disabled={phase !== "done" || committing}
             >
-              Önizleme
+              {committing ? "Kaydediliyor…" : "Ağacı aç"}
             </button>
           )}
         </div>

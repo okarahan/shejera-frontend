@@ -1,39 +1,44 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "./api/client";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { api, setActiveTreeId } from "../api/client";
 import type {
   Family,
   Individual,
   IndividualRelationships,
-  MeResponse,
-  TreeResponse,
-} from "./api/types";
-import { AccountMenu } from "./components/AccountMenu";
-import { AppShell } from "./components/AppShell";
+} from "../api/types";
+import {
+  canDeleteIndividual,
+  deleteBlockedMessage,
+} from "../api/relationships";
+import { buildFullTreeGraph, personLabel } from "../tree/buildGraph";
+import { FamilyTree } from "../tree/FamilyTree";
+import { layoutTree } from "../tree/layoutTree";
+import { TreeZoomControls } from "../tree/TreeZoomControls";
+import { useZoom } from "../tree/useZoom";
 import {
   CreatePersonForm,
   type PersonFormData,
-} from "./components/CreatePersonForm";
-import type { EditPersonFormData } from "./components/EditPersonForm";
+} from "./CreatePersonForm";
+import type { EditPersonFormData } from "./EditPersonForm";
 import {
   partnerRoleFor,
   PersonPanel,
   spouseRoleForNewPartner,
   type PanelAction,
-} from "./components/PersonPanel";
-import { buildFullTreeGraph, personLabel } from "./tree/buildGraph";
-import {
-  canDeleteIndividual,
-  deleteBlockedMessage,
-} from "./api/relationships";
-import { FamilyTree } from "./tree/FamilyTree";
-import { layoutTree } from "./tree/layoutTree";
-import { TreeZoomControls } from "./tree/TreeZoomControls";
-import { useZoom } from "./tree/useZoom";
+} from "./PersonPanel";
 
-async function loadData(): Promise<{
+async function loadData(treeId: string): Promise<{
   individuals: Individual[];
   families: Family[];
 }> {
+  setActiveTreeId(treeId);
   const [individuals, families] = await Promise.all([
     api.listIndividuals(),
     api.listFamilies(),
@@ -41,23 +46,26 @@ async function loadData(): Promise<{
   return { individuals, families };
 }
 
-interface AppProps {
-  me: MeResponse;
-  trees: TreeResponse[];
-  activeTreeId: string | null;
-  onTreesChanged: () => Promise<void>;
-  onSelectTree: (treeId: string) => void;
-  onLogout: () => Promise<void>;
+export type TreeWorkspaceMode = "full" | "contribution";
+
+interface TreeWorkspaceProps {
+  /** Bumps reload when the active tree header changes. */
+  treeId: string;
+  canWrite: boolean;
+  /** @deprecated Ignored — both main and contrib use full editing when canWrite. */
+  mode?: TreeWorkspaceMode;
+  toolbar?: ReactNode;
+  emptyTitle?: string;
+  emptyHint?: string;
 }
 
-export default function App({
-  me,
-  trees,
-  activeTreeId,
-  onTreesChanged,
-  onSelectTree,
-  onLogout,
-}: AppProps) {
+export function TreeWorkspace({
+  treeId,
+  canWrite,
+  toolbar,
+  emptyTitle = "Soy ağacını başlat",
+  emptyHint = "İlk kişiyi ekle.",
+}: TreeWorkspaceProps) {
   const [individuals, setIndividuals] = useState<Individual[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,40 +78,52 @@ export default function App({
   const treeAreaRef = useRef<HTMLDivElement>(null);
   const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom();
 
-  const activeTree = trees.find((t) => t.id === activeTreeId) ?? null;
-  const canWrite = activeTree?.canWrite ?? false;
+  const allowStructure = canWrite;
 
-  const refresh = useCallback(async (keepSelectedId?: string | null) => {
-    const data = await loadData();
-    setIndividuals(data.individuals);
-    setFamilies(data.families);
+  // Ensure header is set before any child effects / fetches (parent effects run later).
+  useLayoutEffect(() => {
+    setActiveTreeId(treeId);
+  }, [treeId]);
 
-    const id = keepSelectedId ?? selectedId;
-    if (id && data.individuals.some((i) => i.id === id)) {
-      const rel = await api.getIndividualRelationships(id);
-      setRelationships(rel);
-    } else {
-      setRelationships(null);
-    }
+  const refresh = useCallback(
+    async (keepSelectedId?: string | null) => {
+      setActiveTreeId(treeId);
+      const data = await loadData(treeId);
+      setIndividuals(data.individuals);
+      setFamilies(data.families);
 
-    return data;
-  }, [selectedId]);
+      const id = keepSelectedId ?? selectedId;
+      if (id && data.individuals.some((i) => i.id === id)) {
+        setActiveTreeId(treeId);
+        const rel = await api.getIndividualRelationships(id);
+        setRelationships(rel);
+      } else {
+        setRelationships(null);
+      }
+
+      return data;
+    },
+    [selectedId, treeId],
+  );
 
   useEffect(() => {
     if (!selectedId) {
       setRelationships(null);
       return;
     }
+    setActiveTreeId(treeId);
     api
       .getIndividualRelationships(selectedId)
       .then(setRelationships)
       .catch(() => setRelationships(null));
-  }, [selectedId]);
+  }, [selectedId, treeId]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     setSelectedId(null);
+    setPanelAction(null);
+    setActiveTreeId(treeId);
     refresh()
       .then((data) => {
         if (data.individuals.length > 0) {
@@ -114,7 +134,7 @@ export default function App({
         setError(err instanceof Error ? err.message : "Yükleme başarısız"),
       )
       .finally(() => setLoading(false));
-  }, [activeTreeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [treeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const graph = useMemo(
     () => buildFullTreeGraph(individuals, families),
@@ -161,7 +181,8 @@ export default function App({
   const selected = individuals.find((i) => i.id === selectedId) ?? null;
 
   async function handleCreateFirstPerson(data: PersonFormData) {
-    if (!canWrite) return;
+    if (!canWrite || !allowStructure) return;
+    setActiveTreeId(treeId);
     const created = await api.createIndividual(data);
     await refresh();
     setSelectedId(created.id);
@@ -171,8 +192,9 @@ export default function App({
     data: PersonFormData,
     action: PanelAction,
   ) {
-    if (!canWrite || !selected || !action) return;
+    if (!canWrite || !allowStructure || !selected || !action) return;
 
+    setActiveTreeId(treeId);
     const created = await api.createIndividual(data);
 
     if (action === "add-partner") {
@@ -225,13 +247,14 @@ export default function App({
 
   async function handleUpdatePerson(data: EditPersonFormData) {
     if (!canWrite || !selected) return;
+    setActiveTreeId(treeId);
     await api.updateIndividual(selected.id, data);
     await refresh();
     setPanelAction(null);
   }
 
   async function handleDeletePerson() {
-    if (!canWrite || !selected) return;
+    if (!canWrite || !allowStructure || !selected) return;
 
     const eligibility = relationships;
     if (!eligibility || !canDeleteIndividual(eligibility)) {
@@ -250,6 +273,7 @@ export default function App({
     if (!ok) return;
 
     try {
+      setActiveTreeId(treeId);
       await api.deleteIndividual(selected.id);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Silme başarısız");
@@ -265,7 +289,7 @@ export default function App({
 
   if (loading) {
     return (
-      <div className="app app--centered">
+      <div className="tree-workspace tree-workspace--centered">
         <p>Yükleniyor…</p>
       </div>
     );
@@ -273,45 +297,21 @@ export default function App({
 
   if (error) {
     return (
-      <div className="app app--centered">
+      <div className="tree-workspace tree-workspace--centered">
         <p className="error-banner">{error}</p>
-        <p className="muted">
-          Backend <code>/api</code> altında erişilebilir mi? Backend
-          deposunda <code>task run</code> çalıştırın.
-        </p>
       </div>
     );
   }
 
   return (
-    <AppShell
-      me={me}
-      section="dashboard"
-      accountMenu={
-        <AccountMenu
-          me={me}
-          trees={trees}
-          activeTreeId={activeTreeId}
-          onSubmitContribution={() => {
-            if (!activeTreeId) return;
-            void api
-              .submitContributionTree(activeTreeId)
-              .then(() => onTreesChanged())
-              .catch((err) =>
-                window.alert(err instanceof Error ? err.message : "Hata"),
-              );
-          }}
-          onSelectTree={onSelectTree}
-          onLogout={() => void onLogout()}
-        />
-      }
-    >
+    <div className="tree-workspace">
+      {toolbar}
       {individuals.length === 0 ? (
         <div className="empty-state">
-          <h2>Soy ağacını başlat</h2>
-          {canWrite ? (
+          <h2>{emptyTitle}</h2>
+          {canWrite && allowStructure ? (
             <>
-              <p>İlk kişiyi ekle.</p>
+              <p>{emptyHint}</p>
               <CreatePersonForm
                 title="İlk kişi"
                 submitLabel="Ekle"
@@ -376,6 +376,7 @@ export default function App({
                 onDeletePerson={handleDeletePerson}
                 onCancelAction={() => setPanelAction(null)}
                 readOnly={!canWrite}
+                allowStructureEdits={allowStructure}
               />
             ) : (
               <p className="muted">Ağaçtan bir kişi seçin.</p>
@@ -383,6 +384,6 @@ export default function App({
           </aside>
         </div>
       )}
-    </AppShell>
+    </div>
   );
 }

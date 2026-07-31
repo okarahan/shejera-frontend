@@ -129,8 +129,8 @@ export function ImportPreviewPage({
         <h2 className="import-preview__title">İşlenen soy ağacı önizlemesi</h2>
         <p className="muted import-preview__subtitle">
           {saved
-            ? "Katkı ağacı kaydedildi. Bu adım bir kez yapılabilir."
-            : "Kayıt geçici bir katkı ağacı oluşturur (ana ağaç değil). Bir kez kaydedilir."}
+            ? "Katkı ağacı kaydedildi. Düzenleme ekranına geçiliyor…"
+            : "Kayıt kalıcı bir katkı ağacı taslağı oluşturur (ana ağaç değil). Bir kez kaydedilir."}
           {!saved && tree
             ? ` ${tree.people.length} kişi, ${tree.families.length} aile tanındı.`
             : ""}
@@ -182,8 +182,8 @@ export function ImportPreviewPage({
             Katkı ağacını kaydetmek istediğinize emin misiniz?
           </p>
           <p className="confirm-dialog__note">
-            Bu işlem yalnızca bir kez yapılabilir. Kaydettikten sonra aynı
-            davetle yeniden içe aktarma yapılamaz.
+            Bu işlem yalnızca bir kez yapılabilir. Kaydettikten sonra katkı
+            ağacını düzenleyebilir; gönderdikten sonra değişiklik yapılamaz.
           </p>
         </ConfirmDialog>
       )}

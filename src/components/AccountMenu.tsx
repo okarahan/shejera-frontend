@@ -1,26 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import type { MeResponse, TreeResponse } from "../api/types";
+import type { MeResponse } from "../api/types";
 
 interface AccountMenuProps {
   me: MeResponse;
-  trees: TreeResponse[];
-  activeTreeId: string | null;
-  onSubmitContribution: () => void;
-  onSelectTree: (treeId: string) => void;
+  treeName?: string | null;
   onLogout: () => void;
 }
 
-export function AccountMenu({
-  me,
-  trees,
-  activeTreeId,
-  onSubmitContribution,
-  onSelectTree,
-  onLogout,
-}: AccountMenuProps) {
+/** Main-app account menu (Authelia `/`). No contribution trees here. */
+export function AccountMenu({ me, treeName, onLogout }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const active = trees.find((t) => t.id === activeTreeId);
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +44,7 @@ export function AccountMenu({
       >
         <span className="account-menu__label">
           {me.displayName}
-          {active ? ` · ${active.name}` : ""}
+          {treeName ? ` · ${treeName}` : ""}
         </span>
         <span className="account-menu__caret" aria-hidden>
           ▾
@@ -62,40 +52,6 @@ export function AccountMenu({
       </button>
       {open && (
         <div className="account-menu__dropdown" role="menu">
-          {trees.map((tree) => (
-            <button
-              key={tree.id}
-              type="button"
-              className="app-menu__item"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onSelectTree(tree.id);
-              }}
-            >
-              {tree.kind === "main" ? "Ana ağaç" : "Katkı"}: {tree.name}
-              {tree.id === activeTreeId ? " ✓" : ""}
-            </button>
-          ))}
-          {active?.kind === "contribution" &&
-            active.status === "draft" &&
-            active.canWrite && (
-              <>
-                <hr className="app-menu__sep" />
-                <button
-                  type="button"
-                  className="app-menu__item"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    onSubmitContribution();
-                  }}
-                >
-                  Katkıyı gönder
-                </button>
-              </>
-            )}
-          <hr className="app-menu__sep" />
           <button
             type="button"
             className="app-menu__item"

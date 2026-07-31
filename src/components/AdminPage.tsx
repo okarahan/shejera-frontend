@@ -121,7 +121,7 @@ export function AdminPage({ me, section }: AdminPageProps) {
           <div className="admin__panel">
             <h2>Yeni davet</h2>
             <p className="muted">
-              Bağlantı <code>/import/…</code> adresine gider (Authelia yok).
+              Bağlantı <code>/contrib/…</code> adresine gider (Authelia yok).
             </p>
             <div className="form-grid">
               <label>
