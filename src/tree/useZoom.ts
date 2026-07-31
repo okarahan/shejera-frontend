@@ -57,17 +57,11 @@ export function useZoom(initial = 1) {
     [],
   );
 
-  const resetZoom = useCallback(
-    (
-      contentWidth: number,
-      contentHeight: number,
-      viewportWidth: number,
-      viewportHeight: number,
-    ) => {
-      fitZoom(contentWidth, contentHeight, viewportWidth, viewportHeight);
-    },
-    [fitZoom],
-  );
+  /** Restore the default 100% zoom (not fit-to-viewport). */
+  const resetZoom = useCallback(() => {
+    userAdjustedRef.current = true;
+    setZoom(1);
+  }, []);
 
   const applyFitIfNeeded = useCallback(
     (

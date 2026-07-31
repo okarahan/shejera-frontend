@@ -1,4 +1,4 @@
-export const PERSON_DATE_HINT = "TT.MM.JJJJ oder JJJJ";
+export const PERSON_DATE_HINT = "GG.AA.YYYY veya YYYY";
 export const BIRTH_DATE_HINT = PERSON_DATE_HINT;
 export const BIRTH_SYMBOL = "*";
 export const DEATH_SYMBOL = "†";
@@ -18,7 +18,7 @@ export function personDateError(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (isValidPersonDate(trimmed)) return null;
-  return `Format: ${PERSON_DATE_HINT}`;
+  return `Biçim: ${PERSON_DATE_HINT}`;
 }
 
 export const birthDateError = personDateError;

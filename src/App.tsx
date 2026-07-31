@@ -7,16 +7,13 @@ import type {
   MeResponse,
   TreeResponse,
 } from "./api/types";
-import { AppMenu } from "./components/AppMenu";
-import { InvitesAdmin } from "./components/InvitesAdmin";
+import { AccountMenu } from "./components/AccountMenu";
+import { AppShell } from "./components/AppShell";
 import {
   CreatePersonForm,
   type PersonFormData,
 } from "./components/CreatePersonForm";
 import type { EditPersonFormData } from "./components/EditPersonForm";
-import { ImportDialog } from "./components/ImportDialog";
-import { ImportProcessingDialog } from "./components/ImportProcessingDialog";
-import { ImportPreviewPage } from "./components/ImportPreviewPage";
 import {
   partnerRoleFor,
   PersonPanel,
@@ -32,8 +29,6 @@ import { FamilyTree } from "./tree/FamilyTree";
 import { layoutTree } from "./tree/layoutTree";
 import { TreeZoomControls } from "./tree/TreeZoomControls";
 import { useZoom } from "./tree/useZoom";
-
-type AppView = "tree" | "import-preview";
 
 async function loadData(): Promise<{
   individuals: Individual[];
@@ -72,10 +67,6 @@ export default function App({
   const [panelOpen, setPanelOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<AppView>("tree");
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
-  const [invitesOpen, setInvitesOpen] = useState(false);
   const treeAreaRef = useRef<HTMLDivElement>(null);
   const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom();
 
@@ -164,15 +155,8 @@ export default function App({
   ]);
 
   const handleResetZoom = useCallback(() => {
-    const el = treeAreaRef.current;
-    if (!el) return;
-    resetZoom(
-      treeContentWidth,
-      treeContentHeight,
-      el.clientWidth,
-      el.clientHeight,
-    );
-  }, [resetZoom, treeContentWidth, treeContentHeight]);
+    resetZoom();
+  }, [resetZoom]);
 
   const selected = individuals.find((i) => i.id === selectedId) ?? null;
 
@@ -300,75 +284,29 @@ export default function App({
   }
 
   return (
-    <div className="app">
-      <header className="header">
-        <h1 className="header__title">Shejera</h1>
-        <AppMenu
+    <AppShell
+      me={me}
+      section="dashboard"
+      accountMenu={
+        <AccountMenu
           me={me}
           trees={trees}
           activeTreeId={activeTreeId}
-          onImport={() => setImportDialogOpen(true)}
-          onInvites={() => setInvitesOpen(true)}
-          onCreateContribution={() => {
-            const name = window.prompt("Name für Beitragsbaum");
-            if (!name?.trim()) return;
-            void api
-              .createContributionTree({ name: name.trim(), expiresInDays: 30 })
-              .then(async (tree) => {
-                await onTreesChanged();
-                onSelectTree(tree.id);
-              })
-              .catch((err) =>
-                window.alert(err instanceof Error ? err.message : "Fehler"),
-              );
-          }}
           onSubmitContribution={() => {
             if (!activeTreeId) return;
             void api
               .submitContributionTree(activeTreeId)
               .then(() => onTreesChanged())
               .catch((err) =>
-                window.alert(err instanceof Error ? err.message : "Fehler"),
+                window.alert(err instanceof Error ? err.message : "Hata"),
               );
           }}
           onSelectTree={onSelectTree}
           onLogout={() => void onLogout()}
         />
-      </header>
-
-      {invitesOpen && <InvitesAdmin onClose={() => setInvitesOpen(false)} />}
-
-      {importDialogOpen && (
-        <ImportDialog
-          onClose={() => setImportDialogOpen(false)}
-          onStartProcessing={() => {
-            setImportDialogOpen(false);
-            setProcessingDialogOpen(true);
-          }}
-        />
-      )}
-
-      {processingDialogOpen && (
-        <ImportProcessingDialog
-          onClose={() => setProcessingDialogOpen(false)}
-          onPreview={() => {
-            setProcessingDialogOpen(false);
-            setView("import-preview");
-          }}
-        />
-      )}
-
-      {view === "import-preview" ? (
-        <ImportPreviewPage
-          onBack={() => setView("tree")}
-          onOpenImport={() => setImportDialogOpen(true)}
-          onCommitted={async (treeId) => {
-            await onTreesChanged();
-            onSelectTree(treeId);
-            setView("tree");
-          }}
-        />
-      ) : individuals.length === 0 ? (
+      }
+    >
+      {individuals.length === 0 ? (
         <div className="empty-state">
           <h2>Soy ağacını başlat</h2>
           {canWrite ? (
@@ -381,33 +319,32 @@ export default function App({
               />
             </>
           ) : (
-            <p className="muted">Dieser Baum ist leer oder nur lesbar.</p>
+            <p className="muted">Bu ağaç boş veya salt okunur.</p>
           )}
         </div>
       ) : (
-        <div
-          className="workspace"
-          data-panel-open={panelOpen}
-        >
-          <div className="workspace__tree" ref={treeAreaRef}>
+        <div className="workspace" data-panel-open={panelOpen}>
+          <div className="workspace__main">
             <TreeZoomControls
               zoom={zoom}
               onZoomIn={zoomIn}
               onZoomOut={zoomOut}
               onReset={handleResetZoom}
             />
-            {graph.nodes.length > 0 ? (
-              <div className="tree-viewport">
-                <FamilyTree
-                  graph={graph}
-                  selectedId={selectedId}
-                  zoom={zoom}
-                  onSelect={setSelectedId}
-                />
-              </div>
-            ) : (
-              <p className="muted">Henüz kişi yok.</p>
-            )}
+            <div className="workspace__tree" ref={treeAreaRef}>
+              {graph.nodes.length > 0 ? (
+                <div className="tree-viewport">
+                  <FamilyTree
+                    graph={graph}
+                    selectedId={selectedId}
+                    zoom={zoom}
+                    onSelect={setSelectedId}
+                  />
+                </div>
+              ) : (
+                <p className="muted">Henüz kişi yok.</p>
+              )}
+            </div>
           </div>
 
           <button
@@ -446,6 +383,6 @@ export default function App({
           </aside>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

@@ -10,8 +10,12 @@ tasks:
         if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
           # shellcheck disable=SC1091
           . "$NVM_DIR/nvm.sh"
-          nvm install
-          nvm use
+          # Use first — avoids re-downloading the newest patch (nvm checksum bugs).
+          if ! nvm use >/dev/null 2>&1; then
+            echo "Installing Node from .nvmrc…"
+            nvm install
+            nvm use
+          fi
         fi
         MAJOR=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
         if [ "$MAJOR" -lt 20 ]; then

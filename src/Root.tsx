@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "./api/client";
 import type { MeResponse, TreeResponse } from "./api/types";
 import App from "./App";
+import { AdminPage, type AdminSection } from "./components/AdminPage";
 import { InvitePage } from "./components/InvitePage";
 import { ImportHubPage } from "./components/ImportHubPage";
 
@@ -10,6 +11,20 @@ function importTokenFromPath(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function adminSectionFromPath(): AdminSection | null {
+  const path = window.location.pathname.replace(/\/$/, "") || "/";
+  if (path === "/admin") return "list"; // redirect handled below
+  if (path === "/admin/list") return "list";
+  if (path === "/admin/invite") return "invite";
+  return null;
+}
+
+/**
+ * - `/` — Dashboard (main tree)
+ * - `/admin` → `/admin/list`, `/admin/invite`
+ * - `/import` — invite/import hub
+ * - `/view` — later read-only
+ */
 export default function Root() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [trees, setTrees] = useState<TreeResponse[]>([]);
@@ -21,7 +36,13 @@ export default function Root() {
   const isImportHubPath =
     window.location.pathname === "/import" ||
     window.location.pathname === "/import/";
-  const isViewPath = window.location.pathname === "/view";
+  const isViewPath =
+    window.location.pathname === "/view" ||
+    window.location.pathname === "/view/";
+  const adminSection = adminSectionFromPath();
+  const isAdminPath = adminSection !== null || window.location.pathname.startsWith("/admin");
+  const isMainPath =
+    window.location.pathname === "/" || window.location.pathname === "";
 
   const refreshSession = useCallback(async (nextMe?: MeResponse) => {
     const user = nextMe ?? (await api.getMe());
@@ -39,25 +60,18 @@ export default function Root() {
   }, []);
 
   useEffect(() => {
-    // Import-first: `/` wird zum Import-Hub umgeleitet.
-    if (window.location.pathname === "/") {
-      window.history.replaceState({}, "", "/import");
+    const path = window.location.pathname.replace(/\/$/, "") || "/";
+    if (path === "/admin") {
+      window.history.replaceState({}, "", "/admin/list");
     }
   }, []);
 
   useEffect(() => {
-    // Any unknown route goes back to import hub (import focus).
-    if (
-      window.location.pathname !== "/view" &&
-      !isImportHubPath &&
-      !importToken
-    ) {
-      window.history.replaceState({}, "", "/import");
-    }
-  }, [importToken, isImportHubPath]);
-
-  useEffect(() => {
     if (importToken) {
+      setAuthLoading(false);
+      return;
+    }
+    if (isViewPath) {
       setAuthLoading(false);
       return;
     }
@@ -69,16 +83,20 @@ export default function Root() {
       .catch((err) => {
         const status = (err as { status?: number }).status;
         if (status === 401) {
-          setAuthError("Invite-Link erforderlich.");
+          setAuthError(
+            isImportHubPath
+              ? "Davet bağlantısı gerekli."
+              : "Shejera oturumu yok (yönetici davetini bir kez kabul edin).",
+          );
         } else {
           setAuthError(
-            err instanceof Error ? err.message : "Auth fehlgeschlagen",
+            err instanceof Error ? err.message : "Kimlik doğrulama başarısız",
           );
         }
         setMe(null);
       })
       .finally(() => setAuthLoading(false));
-  }, [importToken, refreshSession, me]);
+  }, [importToken, refreshSession, me, isImportHubPath, isViewPath]);
 
   if (importToken) {
     return (
@@ -86,10 +104,22 @@ export default function Root() {
         token={importToken}
         onRedeemed={(user) => {
           void refreshSession(user).then(() => {
-            window.history.replaceState({}, "", "/import");
+            window.location.replace("/import");
           });
         }}
       />
+    );
+  }
+
+  if (isViewPath) {
+    return (
+      <div className="app app--centered">
+        <h1>Shejera</h1>
+        <p className="muted">
+          <code>/view</code> daha sonra gelecek (salt okunur). Ana ekran:{" "}
+          <a href="/">/</a>
+        </p>
+      </div>
     );
   }
 
@@ -102,20 +132,15 @@ export default function Root() {
   }
 
   if (!me) {
-    if (isImportHubPath) {
-      return (
-        <div className="app app--centered">
-          <h1>Shejera</h1>
-          <p className="error-banner">{authError ?? "Nicht angemeldet"}</p>
-          <p className="muted">Bitte öffne deinen persönlichen Import-Invite.</p>
-        </div>
-      );
-    }
     return (
       <div className="app app--centered">
         <h1>Shejera</h1>
-        <p className="error-banner">{authError ?? "Nicht angemeldet"}</p>
-        <p className="muted">Bitte öffne deinen persönlichen Import-Invite.</p>
+        <p className="error-banner">{authError ?? "Oturum açılmadı"}</p>
+        <p className="muted">
+          {isImportHubPath
+            ? "Lütfen kişisel davet bağlantını aç."
+            : "Yerel: backend + yönetici oturumu. Canlıda: Authelia `/` önünde."}
+        </p>
       </div>
     );
   }
@@ -125,40 +150,48 @@ export default function Root() {
       <ImportHubPage
         me={me}
         onCommitted={async (treeId) => {
-          await refreshSession(me);
+          await refreshSession();
           setActiveTreeIdState(treeId);
         }}
       />
     );
   }
 
-  if (isViewPath) {
+  if (isAdminPath) {
+    const section = adminSectionFromPath() ?? "list";
+    return <AdminPage me={me} section={section} />;
+  }
+
+  if (isMainPath) {
     return (
-      <div className="app app--centered">
-        <h1>Shejera</h1>
-        <p className="muted">`/view` ist später — aktuell Fokus: `/import`.</p>
-      </div>
+      <App
+        me={me}
+        trees={trees}
+        activeTreeId={activeTreeId}
+        onTreesChanged={async () => {
+          await refreshSession(me);
+        }}
+        onSelectTree={(treeId) => {
+          setActiveTreeIdState(treeId);
+        }}
+        onLogout={async () => {
+          await api.logout();
+          setMe(null);
+          setTrees([]);
+          setActiveTreeIdState(null);
+          setAuthError("Çıkış yapıldı.");
+        }}
+      />
     );
   }
 
   return (
-    <App
-      me={me}
-      trees={trees}
-      activeTreeId={activeTreeId}
-      onTreesChanged={async () => {
-        await refreshSession(me);
-      }}
-      onSelectTree={(treeId) => {
-        setActiveTreeIdState(treeId);
-      }}
-      onLogout={async () => {
-        await api.logout();
-        setMe(null);
-        setTrees([]);
-        setActiveTreeIdState(null);
-        setAuthError("Abgemeldet. Öffne erneut deinen Einladungslink.");
-      }}
-    />
+    <div className="app app--centered">
+      <h1>Shejera</h1>
+      <p className="muted">
+        Bilinmeyen yol. <a href="/">Gösterge paneline</a> veya{" "}
+        <a href="/import">İçe aktarmaya</a>.
+      </p>
+    </div>
   );
 }

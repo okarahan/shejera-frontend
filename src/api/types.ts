@@ -195,6 +195,10 @@ export interface InviteResponse {
   expiresAt?: string | null;
   createdAt: string;
   redeemedAt?: string | null;
+  /** Short admin reference code. */
+  code?: string | null;
+  /** draft | submitted | merged | null */
+  contributionTreeStatus?: string | null;
 }
 
 export interface CreateInviteRequest {

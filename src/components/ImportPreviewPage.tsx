@@ -6,11 +6,12 @@ import { layoutTree } from "../tree/layoutTree";
 import { buildRecognizedTreeGraph } from "../tree/recognizedToGraph";
 import { TreeZoomControls } from "../tree/TreeZoomControls";
 import { useZoom } from "../tree/useZoom";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface ImportPreviewPageProps {
   onBack: () => void;
   onOpenImport: () => void;
-  onCommitted: (treeId: string) => void;
+  onCommitted: (treeId: string) => void | Promise<void>;
 }
 
 export function ImportPreviewPage({
@@ -22,6 +23,8 @@ export function ImportPreviewPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const treeAreaRef = useRef<HTMLDivElement>(null);
   const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom(1);
 
@@ -75,22 +78,18 @@ export function ImportPreviewPage({
   ]);
 
   const handleResetZoom = useCallback(() => {
-    const el = treeAreaRef.current;
-    if (!el) return;
-    resetZoom(
-      treeContentWidth,
-      treeContentHeight,
-      el.clientWidth,
-      el.clientHeight,
-    );
-  }, [resetZoom, treeContentWidth, treeContentHeight]);
+    resetZoom();
+  }, [resetZoom]);
 
   async function handleCommit() {
+    if (saved || committing) return;
     setCommitting(true);
     setError(null);
     try {
       const result = await api.commitImport();
-      onCommitted(result.treeId);
+      setSaved(true);
+      setConfirmOpen(false);
+      await onCommitted(result.treeId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kaydetme başarısız");
     } finally {
@@ -108,24 +107,31 @@ export function ImportPreviewPage({
           <button
             type="button"
             className="btn btn--secondary"
+            disabled={saved}
             onClick={onOpenImport}
           >
-            Importu düzenle
+            Tekrar içe aktar
           </button>
           <button
             type="button"
             className="btn btn--primary"
-            disabled={committing || !tree || tree.people.length === 0}
-            onClick={() => void handleCommit()}
+            disabled={saved || committing || !tree || tree.people.length === 0}
+            onClick={() => setConfirmOpen(true)}
           >
-            {committing ? "Kaydediliyor…" : "Beitragsbaum speichern"}
+            {saved
+              ? "Kaydedildi"
+              : committing
+                ? "Kaydediliyor…"
+                : "Katkı ağacını kaydet"}
           </button>
         </div>
 
         <h2 className="import-preview__title">İşlenen soy ağacı önizlemesi</h2>
         <p className="muted import-preview__subtitle">
-          Speichern legt einen temporären Beitragsbaum an (nicht den Hauptbaum).
-          {tree
+          {saved
+            ? "Katkı ağacı kaydedildi. Bu adım bir kez yapılabilir."
+            : "Kayıt geçici bir katkı ağacı oluşturur (ana ağaç değil). Bir kez kaydedilir."}
+          {!saved && tree
             ? ` ${tree.people.length} kişi, ${tree.families.length} aile tanındı.`
             : ""}
         </p>
@@ -141,22 +147,45 @@ export function ImportPreviewPage({
       )}
 
       {graph && graph.nodes.length > 0 && (
-        <div className="import-preview__tree" ref={treeAreaRef}>
+        <div className="import-preview__tree-wrap">
           <TreeZoomControls
             zoom={zoom}
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             onReset={handleResetZoom}
           />
-          <div className="tree-viewport">
-            <FamilyTree
-              graph={graph}
-              selectedId={null}
-              zoom={zoom}
-              onSelect={() => {}}
-            />
+          <div className="import-preview__tree" ref={treeAreaRef}>
+            <div className="tree-viewport">
+              <FamilyTree
+                graph={graph}
+                selectedId={null}
+                zoom={zoom}
+                onSelect={() => {}}
+              />
+            </div>
           </div>
         </div>
+      )}
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Katkı ağacını kaydet"
+          confirmLabel="Evet, kaydet"
+          cancelLabel="Vazgeç"
+          busy={committing}
+          onCancel={() => {
+            if (!committing) setConfirmOpen(false);
+          }}
+          onConfirm={() => void handleCommit()}
+        >
+          <p className="confirm-dialog__lead">
+            Katkı ağacını kaydetmek istediğinize emin misiniz?
+          </p>
+          <p className="confirm-dialog__note">
+            Bu işlem yalnızca bir kez yapılabilir. Kaydettikten sonra aynı
+            davetle yeniden içe aktarma yapılamaz.
+          </p>
+        </ConfirmDialog>
       )}
     </div>
   );

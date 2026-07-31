@@ -231,7 +231,7 @@ export function PersonPanel({
           </p>
         </>
       )}
-      {readOnly && <p className="muted">Nur Lesen</p>}
+      {readOnly && <p className="muted">Salt okunur</p>}
     </div>
   );
 }

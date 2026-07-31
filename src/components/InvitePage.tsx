@@ -17,7 +17,7 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
       .previewInvite(token)
       .then(setPreview)
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Invite ungültig"),
+        setError(err instanceof Error ? err.message : "Davet geçersiz"),
       );
   }, [token]);
 
@@ -28,7 +28,7 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
       const me = await api.redeemInvite(token);
       onRedeemed(me);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Einlösen fehlgeschlagen");
+      setError(err instanceof Error ? err.message : "Kabul başarısız");
     } finally {
       setBusy(false);
     }
@@ -46,26 +46,26 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
   if (!preview) {
     return (
       <div className="app app--centered">
-        <p>Einladung wird geladen…</p>
+        <p>Davet yükleniyor…</p>
       </div>
     );
   }
 
-  const blocked =
-    preview.expired || preview.status === "revoked" || preview.status === "pending"
-      ? preview.expired || preview.status === "revoked"
-      : false;
+  const roleLabel =
+    preview.role === "admin" ? "Yönetici" : "Katkıda bulunan";
 
   return (
     <div className="app app--centered">
       <h1>Shejera</h1>
       <p>
-        Einladung für <strong>{preview.displayName}</strong> ({preview.email})
+        <strong>{preview.displayName}</strong> ({preview.email}) için davet
       </p>
-      <p className="muted">Rolle: {preview.role}</p>
-      {preview.expired && <p className="error-banner">Diese Einladung ist abgelaufen.</p>}
+      <p className="muted">Rol: {roleLabel}</p>
+      {preview.expired && (
+        <p className="error-banner">Bu davetin süresi dolmuş.</p>
+      )}
       {preview.status === "revoked" && (
-        <p className="error-banner">Diese Einladung wurde widerrufen.</p>
+        <p className="error-banner">Bu davet iptal edilmiş.</p>
       )}
       {error && <p className="error-banner">{error}</p>}
       <button
@@ -74,9 +74,12 @@ export function InvitePage({ token, onRedeemed }: InvitePageProps) {
         disabled={busy || preview.expired || preview.status === "revoked"}
         onClick={() => void redeem()}
       >
-        {busy ? "…" : preview.status === "redeemed" ? "Erneut anmelden" : "Einladung annehmen"}
+        {busy
+          ? "…"
+          : preview.status === "redeemed"
+            ? "Yeniden oturum aç"
+            : "Daveti kabul et"}
       </button>
-      {blocked ? null : null}
     </div>
   );
 }
