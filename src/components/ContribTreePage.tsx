@@ -76,7 +76,7 @@ export function ContribTreePage({
       setActiveTreeId(treeId);
       await api.discardContributionTree(treeId);
       setReimportConfirmOpen(false);
-      window.location.replace("/contrib?import=1");
+      window.location.replace("/contrib?reimport=1");
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Silme başarısız");
       setReimportBusy(false);

@@ -221,7 +221,7 @@ export default function Root() {
   useEffect(() => {
     if (route.kind !== "contrib-hub" || !me) return;
     const autoOpen =
-      new URLSearchParams(window.location.search).get("import") === "1";
+      new URLSearchParams(window.location.search).get("reimport") === "1";
     if (autoOpen) return;
     const contribId = pickContributionId(me, trees);
     if (contribId) {
@@ -265,7 +265,7 @@ export default function Root() {
   // Hub redirect in progress
   if (route.kind === "contrib-hub" && me) {
     const autoOpen =
-      new URLSearchParams(window.location.search).get("import") === "1";
+      new URLSearchParams(window.location.search).get("reimport") === "1";
     const contribId = pickContributionId(me, trees);
     if (contribId && !autoOpen) {
       return (
@@ -292,7 +292,7 @@ export default function Root() {
 
   if (route.kind === "contrib-hub") {
     const autoOpen =
-      new URLSearchParams(window.location.search).get("import") === "1";
+      new URLSearchParams(window.location.search).get("reimport") === "1";
     return (
       <ContribHubPage
         me={me}
