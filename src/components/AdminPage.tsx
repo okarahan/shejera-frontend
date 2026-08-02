@@ -76,14 +76,30 @@ export function AdminPage({ me, section }: AdminPageProps) {
         expiresInDays: 30,
       });
       setLastCreated(created);
+      const link = inviteLink(created);
+      if (link) {
+        try {
+          sessionStorage.setItem(`shejera-invite-link:${created.id}`, link);
+        } catch {
+          /* ignore quota / private mode */
+        }
+      }
       setEmail("");
       setDisplayName("");
       await refresh();
-      window.location.assign("/admin/list");
+      // Stay on this page so the link can be copied (token is only returned once).
     } catch (err) {
       setError(err instanceof Error ? err.message : "Oluşturma başarısız");
     } finally {
       setBusy(false);
+    }
+  }
+
+  function storedLinkFor(inviteId: string): string | null {
+    try {
+      return sessionStorage.getItem(`shejera-invite-link:${inviteId}`);
+    } catch {
+      return null;
     }
   }
 
@@ -162,19 +178,28 @@ export function AdminPage({ me, section }: AdminPageProps) {
             </div>
             {lastCreated && inviteLink(lastCreated) && (
               <div className="invite-link-box">
-                <p className="invite-link">
-                  Bağlantı: <code>{inviteLink(lastCreated)}</code>
+                <p>
+                  <strong>Davet oluşturuldu.</strong> Bağlantıyı şimdi kopyala
+                  (yeniden gösterilmez).
                 </p>
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={() => {
-                    const link = inviteLink(lastCreated);
-                    if (link) void copyText(link);
-                  }}
-                >
-                  {copied ? "Kopyalandı" : "Bağlantıyı kopyala"}
-                </button>
+                <p className="invite-link">
+                  <code>{inviteLink(lastCreated)}</code>
+                </p>
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    onClick={() => {
+                      const link = inviteLink(lastCreated);
+                      if (link) void copyText(link);
+                    }}
+                  >
+                    {copied ? "Kopyalandı" : "Bağlantıyı kopyala"}
+                  </button>
+                  <a className="btn btn--ghost" href="/admin/list">
+                    Listeye dön
+                  </a>
+                </div>
               </div>
             )}
           </div>
@@ -259,16 +284,26 @@ export function AdminPage({ me, section }: AdminPageProps) {
               </div>
             </dl>
 
-            {lastCreated?.id === selected.id && inviteLink(lastCreated) && (
+            {(lastCreated?.id === selected.id
+              ? inviteLink(lastCreated)
+              : storedLinkFor(selected.id)) && (
               <div className="invite-link-box">
                 <p className="invite-link">
-                  Bağlantı: <code>{inviteLink(lastCreated)}</code>
+                  Bağlantı:{" "}
+                  <code>
+                    {lastCreated?.id === selected.id
+                      ? inviteLink(lastCreated)
+                      : storedLinkFor(selected.id)}
+                  </code>
                 </p>
                 <button
                   type="button"
                   className="btn btn--secondary"
                   onClick={() => {
-                    const link = inviteLink(lastCreated);
+                    const link =
+                      (lastCreated?.id === selected.id
+                        ? inviteLink(lastCreated)
+                        : null) ?? storedLinkFor(selected.id);
                     if (link) void copyText(link);
                   }}
                 >
@@ -276,6 +311,15 @@ export function AdminPage({ me, section }: AdminPageProps) {
                 </button>
               </div>
             )}
+
+            {selected.status === "pending" &&
+              !storedLinkFor(selected.id) &&
+              lastCreated?.id !== selected.id && (
+                <p className="muted">
+                  Ham bağlantı yalnızca oluşturma anında gösterilir. Gerekirse
+                  yeni davet oluştur.
+                </p>
+              )}
 
             {selected.status === "pending" && (
               <button
