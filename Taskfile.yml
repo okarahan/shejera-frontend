@@ -1,64 +1,117 @@
 version: "3"
 
+# Task wraps cmds with set -e. Sourcing nvm.sh under set -e often exits with
+# opaque codes (e.g. 3). Always set +e around nvm, then check node ourselves.
+
 tasks:
-  ensure-node:
-    internal: true
+  install:
+    desc: Install npm dependencies
     cmds:
       - |
-        set -e
+        set +e
         export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
         if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
           # shellcheck disable=SC1091
           . "$NVM_DIR/nvm.sh"
-          # Use first — avoids re-downloading the newest patch (nvm checksum bugs).
-          if ! nvm use >/dev/null 2>&1; then
+          nvm use
+          if [ $? -ne 0 ]; then
             echo "Installing Node from .nvmrc…"
-            nvm install
-            nvm use
+            nvm install && nvm use
           fi
+        fi
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Node not found (need 20+, see .nvmrc)"
+          exit 1
         fi
         MAJOR=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
         if [ "$MAJOR" -lt 20 ]; then
-          echo ""
           echo "Node $(node -v) is too old — Vite 6 needs Node >= 20."
-          if [ -s "$NVM_DIR/nvm.sh" ]; then
-            echo "This repo has .nvmrc — run: nvm install && nvm use"
-          else
-            echo "Install Node 20+ from https://nodejs.org/"
-          fi
           exit 1
         fi
         echo "Using Node $(node -v)"
-
-  install:
-    desc: Install npm dependencies
-    deps: [ensure-node]
-    cmds:
-      - npm install
+        npm install
 
   dev:
     desc: Start Vite dev server (http://localhost:5173)
-    deps: [install]
     cmds:
-      - npm run dev
+      - |
+        set +e
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
+          # shellcheck disable=SC1091
+          . "$NVM_DIR/nvm.sh"
+          nvm use
+          if [ $? -ne 0 ]; then
+            echo "Installing Node from .nvmrc…"
+            nvm install && nvm use
+          fi
+        fi
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Node not found (need 20+, see .nvmrc)"
+          exit 1
+        fi
+        MAJOR=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
+        if [ "$MAJOR" -lt 20 ]; then
+          echo "Node $(node -v) is too old — Vite 6 needs Node >= 20."
+          exit 1
+        fi
+        echo "Using Node $(node -v)"
+        npm install
+        npm run dev
 
   build:
     desc: Type-check and production build
-    deps: [install]
     cmds:
-      - npm run build
+      - |
+        set +e
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
+          # shellcheck disable=SC1091
+          . "$NVM_DIR/nvm.sh"
+          nvm use
+          if [ $? -ne 0 ]; then
+            echo "Installing Node from .nvmrc…"
+            nvm install && nvm use
+          fi
+        fi
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Node not found (need 20+, see .nvmrc)"
+          exit 1
+        fi
+        MAJOR=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
+        if [ "$MAJOR" -lt 20 ]; then
+          echo "Node $(node -v) is too old — Vite 6 needs Node >= 20."
+          exit 1
+        fi
+        echo "Using Node $(node -v)"
+        npm install
+        npm run build
 
   preview:
     desc: Preview production build locally
-    deps: [build]
     cmds:
-      - npm run preview
+      - |
+        set +e
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
+          # shellcheck disable=SC1091
+          . "$NVM_DIR/nvm.sh"
+          nvm use || { nvm install && nvm use; }
+        fi
+        npm run preview
 
   check:
     desc: TypeScript check only
-    deps: [install]
     cmds:
-      - npx tsc -b
+      - |
+        set +e
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        if [ -s "$NVM_DIR/nvm.sh" ] && [ -f .nvmrc ]; then
+          # shellcheck disable=SC1091
+          . "$NVM_DIR/nvm.sh"
+          nvm use || { nvm install && nvm use; }
+        fi
+        npx tsc -b
 
   docker:
     desc: Build and run frontend container (http://localhost:8081)

@@ -773,25 +773,24 @@ select {
 
 .person-card__name {
   font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: 400;
+  line-height: 1.25;
   width: 100%;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.person-card__given {
+  font-weight: 400;
 }
 
 .person-card__surname {
-  font-size: 0.75rem;
-  color: var(--muted);
-  line-height: 1.2;
-  width: 100%;
-  margin-top: 0.1rem;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .person-card__dates.life-dates {

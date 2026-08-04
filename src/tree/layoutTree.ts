@@ -48,6 +48,9 @@ export function layoutTree(
 
   let maxWidth = 0;
 
+  // Oldest generation at the top; descendants further down.
+  const rowY = (gen: number) => (gen - minGen) * (CARD_HEIGHT + V_GAP);
+
   for (const gen of gens) {
     const row = byGen.get(gen)!;
     const units: string[][] = [];
@@ -78,7 +81,7 @@ export function layoutTree(
     maxWidth = Math.max(maxWidth, rowWidth);
 
     let x = 0;
-    const y = (gen - minGen) * (CARD_HEIGHT + V_GAP);
+    const y = rowY(gen);
 
     for (const unit of units) {
       if (unit.length === 2) {
@@ -95,7 +98,7 @@ export function layoutTree(
   // Center each row
   for (const gen of gens) {
     const ids = [...positions.entries()]
-      .filter(([, pos]) => pos.y === (gen - minGen) * (CARD_HEIGHT + V_GAP))
+      .filter(([, pos]) => pos.y === rowY(gen))
       .map(([id]) => id);
 
     if (ids.length === 0) continue;

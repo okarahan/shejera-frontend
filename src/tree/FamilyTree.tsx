@@ -64,29 +64,24 @@ function buildEdgePaths(
           (e.from === edge.from || e.to === edge.from),
       );
       let fromX = parentCenter.x;
-      let fromY = parentCenter.y;
       if (spouseEdge) {
         const spouseId =
           spouseEdge.from === edge.from ? spouseEdge.to : spouseEdge.from;
         const spousePos = positions.get(spouseId);
         if (spousePos && spousePos.y === parent.y) {
-          const mid = spouseMidpoint(parent, spousePos);
-          fromX = mid.x;
-          fromY = parent.y + CARD_HEIGHT;
-        } else {
-          fromY = parent.y + CARD_HEIGHT;
+          fromX = spouseMidpoint(parent, spousePos).x;
         }
-      } else {
-        fromY = parent.y + CARD_HEIGHT;
       }
 
-      const midY = fromY + Math.max(28, (childCenter.y - CARD_HEIGHT / 2 - fromY) * 0.45);
+      const fromY = parent.y + CARD_HEIGHT;
+      const toY = child.y;
+      const midY = fromY + Math.max(28, (toY - fromY) * 0.45);
       const pathKey = `parent-${edge.from}-${edge.to}`;
 
       paths.push(
         <path
           key={pathKey}
-          d={`M ${fromX} ${fromY} L ${fromX} ${midY} L ${childCenter.x} ${midY} L ${childCenter.x} ${childCenter.y - CARD_HEIGHT / 2}`}
+          d={`M ${fromX} ${fromY} L ${fromX} ${midY} L ${childCenter.x} ${midY} L ${childCenter.x} ${toY}`}
           className="tree-edge tree-edge--parent"
           fill="none"
         />,

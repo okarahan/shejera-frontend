@@ -47,10 +47,19 @@ export const PersonCard = forwardRef<HTMLButtonElement, PersonCardProps>(
             </span>
           </div>
           <div className="person-card__body">
-            <div className="person-card__name">{person.givenName ?? "—"}</div>
-            {person.surname && (
-              <div className="person-card__surname">{person.surname}</div>
-            )}
+            <div className="person-card__name">
+              <span className="person-card__given">
+                {person.givenName?.trim() || "—"}
+              </span>
+              {person.surname?.trim() ? (
+                <>
+                  {" "}
+                  <span className="person-card__surname">
+                    {person.surname.trim()}
+                  </span>
+                </>
+              ) : null}
+            </div>
             <LifeDates
               birthDate={person.birthDate}
               deathDate={person.deathDate}
