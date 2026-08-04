@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { RecognizedTree } from "../api/types";
-import { FamilyTree } from "../tree/FamilyTree";
-import { layoutTree } from "../tree/layoutTree";
+import { FamilyTree, measureFamilyTreeSize } from "../tree/FamilyTree";
+import { TreeCanvas } from "../tree/TreeCanvas";
 import { buildRecognizedTreeGraph } from "../tree/recognizedToGraph";
 import { TreeZoomControls } from "../tree/TreeZoomControls";
-import { useZoom } from "../tree/useZoom";
+import { useTreeCanvas, ZOOM_STEP } from "../tree/useZoom";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 interface ImportPreviewPageProps {
@@ -26,7 +26,18 @@ export function ImportPreviewPage({
   const [saved, setSaved] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const treeAreaRef = useRef<HTMLDivElement>(null);
-  const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom(1);
+  const {
+    zoom,
+    pan,
+    setPan,
+    zoomIn,
+    zoomOut,
+    zoomToPoint,
+    resetView,
+    applyFitIfNeeded,
+    markUserAdjusted,
+    suppressClickRef,
+  } = useTreeCanvas(1);
 
   useEffect(() => {
     setLoading(true);
@@ -44,14 +55,10 @@ export function ImportPreviewPage({
     [tree],
   );
 
-  const treeLayout = useMemo(
-    () => (graph ? layoutTree(graph.nodes, graph.edges) : null),
+  const treeSize = useMemo(
+    () => (graph ? measureFamilyTreeSize(graph, "root") : { width: 0, height: 0 }),
     [graph],
   );
-
-  const treePadding = 64;
-  const treeContentWidth = (treeLayout?.width ?? 0) + treePadding;
-  const treeContentHeight = (treeLayout?.height ?? 0) + treePadding;
 
   useEffect(() => {
     const el = treeAreaRef.current;
@@ -59,8 +66,8 @@ export function ImportPreviewPage({
 
     const updateFit = () => {
       applyFitIfNeeded(
-        treeContentWidth,
-        treeContentHeight,
+        treeSize.width,
+        treeSize.height,
         el.clientWidth,
         el.clientHeight,
       );
@@ -70,16 +77,31 @@ export function ImportPreviewPage({
     const observer = new ResizeObserver(updateFit);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [
-    applyFitIfNeeded,
-    graph,
-    treeContentWidth,
-    treeContentHeight,
-  ]);
+  }, [applyFitIfNeeded, graph, treeSize.height, treeSize.width]);
 
   const handleResetZoom = useCallback(() => {
-    resetZoom();
-  }, [resetZoom]);
+    const el = treeAreaRef.current;
+    if (!el) return;
+    resetView(treeSize.width, treeSize.height, el.clientWidth, el.clientHeight);
+  }, [resetView, treeSize.height, treeSize.width]);
+
+  const handleZoomIn = useCallback(() => {
+    const el = treeAreaRef.current;
+    if (!el) {
+      zoomIn();
+      return;
+    }
+    zoomToPoint(el.clientWidth / 2, el.clientHeight / 2, zoom + ZOOM_STEP);
+  }, [zoom, zoomIn, zoomToPoint]);
+
+  const handleZoomOut = useCallback(() => {
+    const el = treeAreaRef.current;
+    if (!el) {
+      zoomOut();
+      return;
+    }
+    zoomToPoint(el.clientWidth / 2, el.clientHeight / 2, zoom - ZOOM_STEP);
+  }, [zoom, zoomOut, zoomToPoint]);
 
   async function handleCommit() {
     if (saved || committing) return;
@@ -118,15 +140,10 @@ export function ImportPreviewPage({
             disabled={saved || committing || !tree || tree.people.length === 0}
             onClick={() => setConfirmOpen(true)}
           >
-            {saved
-              ? "Kaydedildi"
-              : committing
-                ? "Kaydediliyor…"
-                : "Katkı ağacını kaydet"}
+            {committing ? "Kaydediliyor…" : saved ? "Kaydedildi" : "Kaydet"}
           </button>
         </div>
-
-        <h2 className="import-preview__title">İşlenen soy ağacı önizlemesi</h2>
+        <h1 className="import-preview__title">İçe aktarma önizlemesi</h1>
         <p className="muted import-preview__subtitle">
           {saved
             ? "Katkı ağacı kaydedildi. Düzenleme ekranına geçiliyor…"
@@ -150,21 +167,30 @@ export function ImportPreviewPage({
         <div className="import-preview__tree-wrap">
           <TreeZoomControls
             zoom={zoom}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
             onReset={handleResetZoom}
           />
-          <div className="import-preview__tree" ref={treeAreaRef}>
-            <div className="tree-viewport">
-              <FamilyTree
-                graph={graph}
-                selectedId={null}
-                focusId="root"
-                zoom={zoom}
-                onSelect={() => {}}
-              />
-            </div>
-          </div>
+          <TreeCanvas
+            viewportRef={treeAreaRef}
+            className="import-preview__tree"
+            zoom={zoom}
+            pan={pan}
+            onPanChange={setPan}
+            onZoomToPoint={zoomToPoint}
+            onUserInteract={markUserAdjusted}
+            suppressClickRef={suppressClickRef}
+            contentWidth={treeSize.width}
+            contentHeight={treeSize.height}
+          >
+            <FamilyTree
+              graph={graph}
+              selectedId={null}
+              focusId="root"
+              suppressClickRef={suppressClickRef}
+              onSelect={() => {}}
+            />
+          </TreeCanvas>
         </div>
       )}
 
@@ -179,12 +205,9 @@ export function ImportPreviewPage({
           }}
           onConfirm={() => void handleCommit()}
         >
-          <p className="confirm-dialog__lead">
-            Katkı ağacını kaydetmek istediğinize emin misiniz?
-          </p>
-          <p className="confirm-dialog__note">
-            Bu işlem yalnızca bir kez yapılabilir. Kaydettikten sonra katkı
-            ağacını düzenleyebilir; gönderdikten sonra değişiklik yapılamaz.
+          <p>
+            Tanınan kişiler ve aileler kalıcı bir katkı ağacı olarak
+            kaydedilecek. Devam edilsin mi?
           </p>
         </ConfirmDialog>
       )}

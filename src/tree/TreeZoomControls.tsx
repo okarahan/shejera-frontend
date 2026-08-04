@@ -22,7 +22,7 @@ export function TreeZoomControls({
         type="button"
         className="tree-zoom__btn"
         aria-label="Uzaklaştır"
-        disabled={zoom <= MIN_ZOOM}
+        disabled={zoom <= MIN_ZOOM + 1e-6}
         onClick={onZoomOut}
       >
         −
@@ -34,7 +34,7 @@ export function TreeZoomControls({
         type="button"
         className="tree-zoom__btn"
         aria-label="Yakınlaştır"
-        disabled={zoom >= MAX_ZOOM}
+        disabled={zoom >= MAX_ZOOM - 1e-6}
         onClick={onZoomIn}
       >
         +

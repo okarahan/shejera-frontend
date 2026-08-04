@@ -18,10 +18,10 @@ import {
   deleteBlockedMessage,
 } from "../api/relationships";
 import { buildFullTreeGraph, personLabel } from "../tree/buildGraph";
-import { FamilyTree } from "../tree/FamilyTree";
-import { layoutTree } from "../tree/layoutTree";
+import { FamilyTree, measureFamilyTreeSize } from "../tree/FamilyTree";
+import { TreeCanvas } from "../tree/TreeCanvas";
 import { TreeZoomControls } from "../tree/TreeZoomControls";
-import { useZoom } from "../tree/useZoom";
+import { useTreeCanvas, ZOOM_STEP } from "../tree/useZoom";
 import {
   CreatePersonForm,
   type PersonFormData,
@@ -76,7 +76,19 @@ export function TreeWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const treeAreaRef = useRef<HTMLDivElement>(null);
-  const { zoom, zoomIn, zoomOut, resetZoom, applyFitIfNeeded } = useZoom();
+  const {
+    zoom,
+    pan,
+    setPan,
+    zoomIn,
+    zoomOut,
+    zoomToPoint,
+    resetView,
+    applyFitIfNeeded,
+    allowAutoFit,
+    markUserAdjusted,
+    suppressClickRef,
+  } = useTreeCanvas();
 
   const allowStructure = canWrite;
 
@@ -124,6 +136,7 @@ export function TreeWorkspace({
     setSelectedId(null);
     setPanelAction(null);
     setActiveTreeId(treeId);
+    allowAutoFit();
     refresh()
       .then((data) => {
         if (data.individuals.length > 0) {
@@ -141,14 +154,10 @@ export function TreeWorkspace({
     [individuals, families],
   );
 
-  const treeLayout = useMemo(
-    () => layoutTree(graph.nodes, graph.edges),
+  const treeSize = useMemo(
+    () => measureFamilyTreeSize(graph),
     [graph],
   );
-
-  const treePadding = 64;
-  const treeContentWidth = treeLayout.width + treePadding;
-  const treeContentHeight = treeLayout.height + treePadding;
 
   useEffect(() => {
     const el = treeAreaRef.current;
@@ -156,8 +165,8 @@ export function TreeWorkspace({
 
     const updateFit = () => {
       applyFitIfNeeded(
-        treeContentWidth,
-        treeContentHeight,
+        treeSize.width,
+        treeSize.height,
         el.clientWidth,
         el.clientHeight,
       );
@@ -167,16 +176,39 @@ export function TreeWorkspace({
     const observer = new ResizeObserver(updateFit);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [
-    applyFitIfNeeded,
-    graph.nodes.length,
-    treeContentWidth,
-    treeContentHeight,
-  ]);
+  }, [applyFitIfNeeded, graph.nodes.length, treeSize.height, treeSize.width]);
 
   const handleResetZoom = useCallback(() => {
-    resetZoom();
-  }, [resetZoom]);
+    const el = treeAreaRef.current;
+    if (!el) return;
+    resetView(treeSize.width, treeSize.height, el.clientWidth, el.clientHeight);
+  }, [resetView, treeSize.height, treeSize.width]);
+
+  const handleZoomIn = useCallback(() => {
+    const el = treeAreaRef.current;
+    if (!el) {
+      zoomIn();
+      return;
+    }
+    zoomToPoint(
+      el.clientWidth / 2,
+      el.clientHeight / 2,
+      zoom + ZOOM_STEP,
+    );
+  }, [zoom, zoomIn, zoomToPoint]);
+
+  const handleZoomOut = useCallback(() => {
+    const el = treeAreaRef.current;
+    if (!el) {
+      zoomOut();
+      return;
+    }
+    zoomToPoint(
+      el.clientWidth / 2,
+      el.clientHeight / 2,
+      zoom - ZOOM_STEP,
+    );
+  }, [zoom, zoomOut, zoomToPoint]);
 
   const selected = individuals.find((i) => i.id === selectedId) ?? null;
 
@@ -327,23 +359,33 @@ export function TreeWorkspace({
           <div className="workspace__main">
             <TreeZoomControls
               zoom={zoom}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
               onReset={handleResetZoom}
             />
-            <div className="workspace__tree" ref={treeAreaRef}>
+            <div className="workspace__tree">
               {graph.nodes.length > 0 ? (
-                <div className="tree-viewport">
+                <TreeCanvas
+                  viewportRef={treeAreaRef}
+                  zoom={zoom}
+                  pan={pan}
+                  onPanChange={setPan}
+                  onZoomToPoint={zoomToPoint}
+                  onUserInteract={markUserAdjusted}
+                  suppressClickRef={suppressClickRef}
+                  contentWidth={treeSize.width}
+                  contentHeight={treeSize.height}
+                >
                   <FamilyTree
                     graph={graph}
                     selectedId={selectedId}
-                    zoom={zoom}
+                    suppressClickRef={suppressClickRef}
                     onSelect={(id) => {
                       setSelectedId(id);
                       setPanelOpen(true);
                     }}
                   />
-                </div>
+                </TreeCanvas>
               ) : (
                 <p className="muted">Henüz kişi yok.</p>
               )}

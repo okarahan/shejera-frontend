@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { type MutableRefObject, type ReactNode } from "react";
 import type { TreeEdge, TreeGraph } from "./buildGraph";
 import {
   CARD_HEIGHT,
@@ -15,10 +15,11 @@ import { PersonCard } from "./PersonCard";
 interface FamilyTreeProps {
   graph: TreeGraph;
   selectedId: string | null;
-  zoom: number;
   onSelect: (id: string) => void;
   /** Pedigree focus (OCR root / central person). Defaults to pickFocusPersonId. */
   focusId?: string | null;
+  /** Ignore click after a canvas pan drag. */
+  suppressClickRef?: MutableRefObject<boolean>;
 }
 
 /**
@@ -204,20 +205,10 @@ function buildEdgePaths(
 export function FamilyTree({
   graph,
   selectedId,
-  zoom,
   onSelect,
   focusId,
+  suppressClickRef,
 }: FamilyTreeProps) {
-  const selectedRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    selectedRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [selectedId]);
-
   const focus =
     focusId ?? pickFocusPersonId(graph.nodes, graph.edges);
   const layout: LayoutResult = layoutTree(graph.nodes, graph.edges, focus);
@@ -233,44 +224,51 @@ export function FamilyTree({
 
   return (
     <div
-      className="tree-viewport__stage"
-      style={{ width: svgWidth * zoom, height: svgHeight * zoom }}
+      className="family-tree"
+      style={{ width: svgWidth, height: svgHeight }}
     >
-      <div
-        className="family-tree"
-        style={{
-          width: svgWidth,
-          height: svgHeight,
-          transform: `scale(${zoom})`,
-          transformOrigin: "top left",
-        }}
+      <svg
+        className="family-tree__svg"
+        width={svgWidth}
+        height={svgHeight}
+        aria-hidden
       >
-        <svg
-          className="family-tree__svg"
-          width={svgWidth}
-          height={svgHeight}
-          aria-hidden
-        >
-          {buildEdgePaths(graph.edges, offsetPositions)}
-        </svg>
-        <div className="family-tree__cards">
-          {graph.nodes.map((node) => {
-            const pos = offsetPositions.get(node.id);
-            if (!pos) return null;
-            return (
-              <PersonCard
-                key={node.id}
-                ref={selectedId === node.id ? selectedRef : undefined}
-                person={node.individual}
-                x={pos.x}
-                y={pos.y}
-                selected={selectedId === node.id}
-                onClick={() => onSelect(node.id)}
-              />
-            );
-          })}
-        </div>
+        {buildEdgePaths(graph.edges, offsetPositions)}
+      </svg>
+      <div className="family-tree__cards">
+        {graph.nodes.map((node) => {
+          const pos = offsetPositions.get(node.id);
+          if (!pos) return null;
+          return (
+            <PersonCard
+              key={node.id}
+              person={node.individual}
+              x={pos.x}
+              y={pos.y}
+              selected={selectedId === node.id}
+              onClick={() => {
+                if (suppressClickRef?.current) return;
+                onSelect(node.id);
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );
+}
+
+/** Content size used by TreeCanvas fit/pan (matches FamilyTree padding). */
+export function measureFamilyTreeSize(
+  graph: TreeGraph,
+  focusId?: string | null,
+): { width: number; height: number } {
+  const focus =
+    focusId ?? pickFocusPersonId(graph.nodes, graph.edges);
+  const layout = layoutTree(graph.nodes, graph.edges, focus);
+  const padding = 40;
+  return {
+    width: layout.width + padding * 2,
+    height: layout.height + padding * 2,
+  };
 }
