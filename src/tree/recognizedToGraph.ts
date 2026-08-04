@@ -78,50 +78,6 @@ export function buildRecognizedTreeGraph(tree: RecognizedTree): TreeGraph {
   const peopleById = new Map(tree.people.map((p) => [p.tempId, p]));
   const individuals = recognizedPeopleToIndividuals(tree.people);
   const families = recognizedFamiliesToFamilies(tree.families, peopleById);
-  const graph = buildFullTreeGraph(individuals, families);
-  // Nüfus charts: person on top, ancestors below (opposite of live Shejera tree).
-  return layoutGenerationsRootOnTop(graph, "root");
-}
-
-/**
- * Assign generation 0 to the root person and increasing generations to ancestors
- * so the preview matches the source chart orientation.
- */
-function layoutGenerationsRootOnTop(graph: TreeGraph, rootId: string): TreeGraph {
-  if (graph.nodes.length === 0) return graph;
-
-  const root = graph.nodes.find((n) => n.id === rootId) ?? graph.nodes[0];
-  const parentsOf = new Map<string, string[]>();
-  for (const edge of graph.edges) {
-    if (edge.type !== "parent") continue;
-    const list = parentsOf.get(edge.to) ?? [];
-    list.push(edge.from);
-    parentsOf.set(edge.to, list);
-  }
-
-  const generations = new Map<string, number>();
-  const frontier = [root.id];
-  generations.set(root.id, 0);
-
-  while (frontier.length > 0) {
-    const childId = frontier.shift()!;
-    const childGen = generations.get(childId) ?? 0;
-    for (const parentId of parentsOf.get(childId) ?? []) {
-      const nextGen = childGen + 1;
-      const prev = generations.get(parentId);
-      if (prev === undefined || nextGen > prev) {
-        generations.set(parentId, nextGen);
-        frontier.push(parentId);
-      }
-    }
-  }
-
-  // Unlinked people: keep them near the bottom of the known depth
-  const maxLinked = Math.max(0, ...generations.values());
-  const nodes = graph.nodes.map((node) => ({
-    ...node,
-    generation: generations.get(node.id) ?? maxLinked + 1,
-  }));
-
-  return { nodes, edges: graph.edges };
+  // Top-down: ancestors (root) at top, descendants (leaves) below — same as live tree.
+  return buildFullTreeGraph(individuals, families);
 }

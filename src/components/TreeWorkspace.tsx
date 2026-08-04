@@ -338,7 +338,10 @@ export function TreeWorkspace({
                     graph={graph}
                     selectedId={selectedId}
                     zoom={zoom}
-                    onSelect={setSelectedId}
+                    onSelect={(id) => {
+                      setSelectedId(id);
+                      setPanelOpen(true);
+                    }}
                   />
                 </div>
               ) : (
