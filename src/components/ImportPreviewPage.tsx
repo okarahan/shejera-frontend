@@ -159,6 +159,7 @@ export function ImportPreviewPage({
               <FamilyTree
                 graph={graph}
                 selectedId={null}
+                focusId="root"
                 zoom={zoom}
                 onSelect={() => {}}
               />

@@ -685,20 +685,20 @@ select {
 
 .tree-edge {
   stroke: #57534e;
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 1.75;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 
 .tree-edge--parent {
   stroke: #44403c;
-  stroke-width: 3.25;
+  stroke-width: 1.75;
 }
 
 .tree-edge--spouse {
-  stroke: #78716c;
-  stroke-width: 2.5;
-  stroke-dasharray: 6 4;
+  stroke: #57534e;
+  stroke-width: 1.75;
+  stroke-dasharray: none;
 }
 
 .person-card {
